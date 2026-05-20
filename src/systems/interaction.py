@@ -1,6 +1,5 @@
 import random
 import pygame
-# pyrefly: ignore [missing-import]
 from settings import Colors, TILE_SIZE
 from items import ITEM_DATABASE
 from sounds import SoundGenerator
@@ -24,7 +23,7 @@ class InteractionHandler:
         for (item_name, ix, iy), chunk in ground_items:
             if self.game.player.inventory.add_item(item_name):
                 chunk.items_on_ground.remove((item_name, ix, iy))
-                self.game.event_system.add_log(f"'{item_name}'을(를) 획득했습니다!")
+                self.game.event_system.add_log(t("acquired_item", item_name))
                 SoundGenerator.play("pickup")
                 self.game.game_particles.emit(
                     lambda: ParticleEmitters.pickup_sparkle(px * TILE_SIZE, py * TILE_SIZE), 5)
@@ -39,39 +38,40 @@ class InteractionHandler:
                 for offer, want, count in npc.trade_items[:4]:
                     has = self.game.player.inventory.count_item(want)
                     if has >= count:
-                        label = f"[가능] 획득: {offer}  |  지불: {want} x{count} (보유: {has})"
+                        label = t("trade_possible", offer, want, count, has)
                     else:
-                        label = f"[부족] 획득: {offer}  |  지불: {want} x{count} (보유: {has})"
+                        label = t("trade_impossible", offer, want, count, has)
                     options.append((label, f"trade_{offer}_{want}_{count}"))
-                options.append(("거래 종료", "close"))
+                options.append((t("trade_close"), "close"))
                 self.game.dialogue_ui.show(
-                    npc.name, npc.dialogue_intro, options,
+                    t(npc.name), t(npc.dialogue_intro), options,
                     on_select=lambda result: self.handle_trade(result)
                 )
             elif npc.npc_type in ("soldier", "survivor"):
-                if not getattr(npc, "met", False):
-                    npc.met = True
-                    self.game.event_system.add_log(f"★ 임무 등록: {npc.name}에게 {npc.quest_req[0]} {npc.quest_req[1]}개 전달")
                 req_item, req_count = npc.quest_req
                 reward_item, reward_count = npc.quest_reward
+                if not getattr(npc, "met", False):
+                    npc.met = True
+                    self.game.event_system.add_log(t("quest_registered", npc.name, req_item, req_count))
                 has = self.game.player.inventory.count_item(req_item)
                 
                 if has >= req_count:
-                    label = f"[완료 가능] 전달: {req_item} x{req_count}  |  보상: {reward_item} x{reward_count} (현재: {has})"
+                    label = t("quest_can_complete", req_item, req_count, reward_item, reward_count, has)
                 else:
-                    label = f"[진행 중] 필요: {req_item} x{req_count}  |  보상: {reward_item} x{reward_count} (현재: {has})"
+                    label = t("quest_in_progress", req_item, req_count, reward_item, reward_count, has)
                 
+                dialogue_text = t("quest_dialogue", req_item, req_count, reward_item, reward_count)
                 self.game.dialogue_ui.show(
-                    npc.name,
-                    f"이봐 생존자. {req_item} {req_count}개만 좀 가져다 주겠나? 댓가로 {reward_item} {reward_count}개를 주지. (필요: {req_item} {req_count}개 | 보상: {reward_item} {reward_count}개)",
+                    t(npc.name),
+                    dialogue_text,
                     [
                         (label, "complete_quest"),
-                        ("나중에", "close")
+                        (t("quest_later"), "close")
                     ],
                     on_select=lambda r: self.handle_quest(npc, r)
                 )
             else:
-                self.game.dialogue_ui.show(npc.name, npc.dialogue_intro)
+                self.game.dialogue_ui.show(t(npc.name), t(npc.dialogue_intro))
             return
 
         # 건물 진입 (문 앞에서 E키)
@@ -87,16 +87,16 @@ class InteractionHandler:
             if obj.obj_type.startswith("tree_") and not obj.looted:
                 obj.looted = True
                 self.game.player.inventory.add_item("나무", random.randint(1, 3))
-                self.game.event_system.add_log("나무를 채집했습니다!")
+                self.game.event_system.add_log(t("log_gather_wood"))
                 SoundGenerator.play("pickup")
                 return
             elif obj.obj_type == "bush" and not obj.looted:
                 obj.looted = True
                 if random.random() < 0.5:
                     self.game.player.inventory.add_item("약초", 1)
-                    self.game.event_system.add_log("약초를 발견했습니다!")
+                    self.game.event_system.add_log(t("log_gather_herb"))
                 else:
-                    self.game.event_system.add_log("관목을 뒤졌지만 아무것도 없었습니다.")
+                    self.game.event_system.add_log(t("log_gather_nothing"))
                 SoundGenerator.play("pickup")
                 return
 
@@ -113,10 +113,10 @@ class InteractionHandler:
             if self.game.player.inventory.has_item(want, count):
                 self.game.player.inventory.remove_item(want, count)
                 self.game.player.inventory.add_item(offer)
-                self.game.event_system.add_log(f"거래 완료: {want} x{count} → {offer}")
+                self.game.event_system.add_log(t("log_trade_complete", want, count, offer))
                 SoundGenerator.play("pickup")
             else:
-                self.game.event_system.add_log(f"{want}이(가) 부족합니다.")
+                self.game.event_system.add_log(t("log_item_lacking", want))
 
     def handle_quest(self, npc, result):
         """NPC 퀘스트 완료 처리"""
@@ -133,11 +133,11 @@ class InteractionHandler:
                 for _ in range(reward_count):
                     self.game.player.inventory.add_item(reward_item, 1)
                     
-                self.game.event_system.add_log(f"임무 완료: {reward_item} x{reward_count} 획득")
+                self.game.event_system.add_log(t("log_quest_complete", reward_item, reward_count))
                 SoundGenerator.play("craft_complete")
                 npc.active = False  # NPC 퇴장
             else:
-                self.game.event_system.add_log(f"[{req_item}]이(가) 부족합니다.")
+                self.game.event_system.add_log(t("log_item_lacking", req_item))
 
     def handle_interior_interaction(self):
         """건물 내부 E키 상호작용"""
@@ -153,7 +153,7 @@ class InteractionHandler:
             item_name = item_tuple[0]
             if self.game.player.inventory.add_item(item_name):
                 self.game.current_interior.items_on_ground.remove(item_tuple)
-                self.game.event_system.add_log(f"'{item_name}'을(를) 획득했습니다!")
+                self.game.event_system.add_log(t("acquired_item", item_name))
                 SoundGenerator.play("pickup")
                 self.game.game_particles.emit(
                     lambda: ParticleEmitters.pickup_sparkle(ix * TILE_SIZE, iy * TILE_SIZE), 5)
@@ -171,10 +171,10 @@ class InteractionHandler:
                 # 수면 시스템
                 current_hour = self.game.time_system.current_hour
                 if 6 <= current_hour < 18:
-                    self.game.event_system.add_log("낮에는 수면이 불가능합니다. (18:00 ~ 6:00 가능)")
+                    self.game.event_system.add_log(t("log_sleep_daytime"))
                     SoundGenerator.play("error")
                 else:
-                    self.game.event_system.add_log("잠자리에 듭니다... (다음 날 아침 6시 됨)")
+                    self.game.event_system.add_log(t("log_sleep_start"))
                     SoundGenerator.play("door_open")
                     
                     # 6시로 스킵
@@ -207,9 +207,10 @@ class InteractionHandler:
                             # 무게나 슬롯 초과 시 내부 바닥에 드롭
                             self.game.current_interior.drop_item(item_name, self.game.player.x, self.game.player.y)
                             droppedItems = True
-                    items_str = ", ".join(found)
+                    items_str = ", ".join([t(name) for name in found])
                     log_text = f"{t('found_items')}{items_str}"
-                    if droppedItems: log_text += " (가방 꽉참: 바닥에 떨굼)"
+                    if droppedItems:
+                        log_text += t("log_bag_full")
                     self.game.event_system.add_log(log_text)
                     SoundGenerator.play("pickup")
                 else:

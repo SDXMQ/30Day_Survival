@@ -442,6 +442,7 @@ class GameSettings:
             "show_fps": self.show_fps,
             "screen_shake": self.screen_shake,
             "particles_quality": self.particles_quality,
+            "language": self.language,
         }
         try:
             with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
@@ -462,6 +463,14 @@ class GameSettings:
                 self.show_fps = data.get("show_fps", False)
                 self.screen_shake = data.get("screen_shake", True)
                 self.particles_quality = data.get("particles_quality", 2)
+                self.language = data.get("language", "ko")
+                
+                # 로드 후 i18n 언어 즉시 적용
+                try:
+                    from i18n import set_language
+                    set_language(self.language)
+                except ImportError:
+                    pass
         except Exception:
             pass
 

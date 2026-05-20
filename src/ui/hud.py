@@ -6,6 +6,7 @@ from items import ITEM_DATABASE, ItemCategory
 from crafting import CRAFTING_RECIPES, RECIPE_CATEGORIES
 from utils import wrap_text, ease_out_cubic, lerp
 from .fonts import FontManager
+from i18n import t
 
 
 class HUD:
@@ -57,11 +58,11 @@ class HUD:
         font = FontManager.get(12)
 
         bars = [
-            ("체력", self.shown_hp, 100, (220, 50, 50), (180, 30, 30)),
-            ("배고픔", self.shown_hunger, 100, (210, 160, 50), (170, 130, 30)),
-            ("갈증", self.shown_thirst, 100, (50, 140, 220), (30, 110, 180)),
-            ("스트레스", self.shown_stress, 100, (180, 50, 200), (150, 30, 170)),
-            ("스태미나", self.shown_stamina, 100, (50, 200, 100), (30, 160, 70)),
+            (t("hp"), self.shown_hp, 100, (220, 50, 50), (180, 30, 30)),
+            (t("hunger"), self.shown_hunger, 100, (210, 160, 50), (170, 130, 30)),
+            (t("thirst"), self.shown_thirst, 100, (50, 140, 220), (30, 110, 180)),
+            (t("stress"), self.shown_stress, 100, (180, 50, 200), (150, 30, 170)),
+            (t("stamina"), self.shown_stamina, 100, (50, 200, 100), (30, 160, 70)),
         ]
 
         # 배경 패널
@@ -102,11 +103,12 @@ class HUD:
         draw_rounded_rect(surface, (15, 15, 25, 180), (px, py, panel_w, panel_h), radius=8)
 
         # 날짜
-        day_text = font_big.render(f"Day {current_day}/{total_days}", True, Colors.UI_ACCENT)
+        day_text = font_big.render(f"{t('day')} {current_day}/{total_days}", True, Colors.UI_ACCENT)
         surface.blit(day_text, (px + 10, py + 5))
 
         # 시간
-        time_text = font_small.render(f"{time_system.time_string}  {time_system.period_name}", True, Colors.UI_TEXT)
+        period_key = f"period_{time_system.period_name}"
+        time_text = font_small.render(f"{time_system.time_string}  {t(period_key)}", True, Colors.UI_TEXT)
         surface.blit(time_text, (px + 10, py + 32))
 
     def _draw_weather_info(self, surface, weather_system):
@@ -115,7 +117,8 @@ class HUD:
         px = self.sw - 175
         py = 80
 
-        weather_text = font.render(f"날씨: {weather_system.current_weather}", True, Colors.UI_TEXT_DIM)
+        weather_key = f"weather_{weather_system.current_weather}"
+        weather_text = font.render(t("weather_label", t(weather_key)), True, Colors.UI_TEXT_DIM)
         surface.blit(weather_text, (px + 10, py))
 
     def _draw_minimap(self, surface, player):
@@ -150,7 +153,9 @@ class HUD:
             alpha = max(0, min(255, int(timer * 255)))
             if alpha <= 0:
                 continue
-            text_surf = font.render(msg, True, Colors.UI_TEXT)
+            # 알림 메시지 자체도 t()를 거쳐서 출력(단, dynamic format인 경우 msg 그대로 출력)
+            translated_msg = t(msg)
+            text_surf = font.render(translated_msg, True, Colors.UI_TEXT)
             text_w = text_surf.get_width()
             x = (self.sw - text_w) // 2
 
@@ -173,7 +178,7 @@ class HUD:
             surface.blit(icon, (wx + 9, wy + 9))
         else:
             font = FontManager.get(10)
-            text = font.render("주먹", True, Colors.UI_TEXT_DIM)
+            text = font.render(t("fist"), True, Colors.UI_TEXT_DIM)
             surface.blit(text, (wx + 12, wy + 18))
 
     def _draw_quick_info(self, surface, player):
@@ -182,15 +187,15 @@ class HUD:
         x, y = 75, self.sh - 55
 
         # 방어도
-        def_text = font.render(f"방어도: {player.shelter_defense}", True, Colors.UI_TEXT_DIM)
+        def_text = font.render(t("defense_label", player.shelter_defense), True, Colors.UI_TEXT_DIM)
         surface.blit(def_text, (x, y))
 
         # 킬 수
-        kill_text = font.render(f"처치: {player.killed_zombies}", True, Colors.UI_TEXT_DIM)
+        kill_text = font.render(t("kills_label", player.killed_zombies), True, Colors.UI_TEXT_DIM)
         surface.blit(kill_text, (x, y + 16))
 
         # 조작 안내
-        hint = font.render("E:상호작용  I:인벤토리  C:크래프팅  Tab:지도  LCTRL:앉기  ESC:메뉴", True, (100, 105, 120))
+        hint = font.render(t("hud_controls_hint"), True, (100, 105, 120))
         surface.blit(hint, (x, y + 32))
 
     def _draw_crouch_indicator(self, surface, player):
@@ -198,7 +203,7 @@ class HUD:
         if not player.is_crouching:
             return
         font = FontManager.get(14)
-        text = font.render("◆ 은신 중 ◆", True, (100, 200, 255))
+        text = font.render(t("stealth_mode"), True, (100, 200, 255))
         tw = text.get_width()
         x = (self.sw - tw) // 2
         y = self.sh - 45
@@ -206,6 +211,7 @@ class HUD:
         pygame.draw.rect(bg, (20, 40, 60, 180), (0, 0, tw + 20, 28), border_radius=6)
         surface.blit(bg, (x - 10, y - 4))
         surface.blit(text, (x, y))
+
 
 class EventLogUI:
     """이벤트 로그 표시"""
@@ -225,7 +231,7 @@ class EventLogUI:
             alpha = max(0, min(255, int(timer * 80)))
             if alpha <= 0:
                 continue
-            text_surf = font.render(msg, True, Colors.UI_TEXT)
+            text_surf = font.render(t(msg), True, Colors.UI_TEXT)
             text_surf.set_alpha(alpha)
 
             bg_alpha = max(0, min(140, alpha))
@@ -234,4 +240,3 @@ class EventLogUI:
             surface.blit(bg, (8, y - 2))
             surface.blit(text_surf, (16, y))
             y += 20
-

@@ -231,8 +231,8 @@ class Game:
 
         self.state = GameState.PLAYING
         if self.sandbox_mode:
-            self.event_system.add_log("★ [샌드박스 모드] 모든 아이템이 지급되었습니다!")
-        self.event_system.add_log("★ 30일간의 생존이 시작됩니다. 구조대가 올 때까지 살아남으세요!")
+            self.event_system.add_log(t("log_sandbox_started"))
+        self.event_system.add_log(t("log_survival_started"))
         SoundGenerator.play("day_start")
 
     def load_saved_game(self):
@@ -247,7 +247,7 @@ class Game:
 
         if GameSaveManager.deserialize_game(self, data):
             self.state = GameState.PLAYING
-            self.event_system.add_log(f"★ Day {self.current_day} - 게임을 불러왔습니다.")
+            self.event_system.add_log(t("log_game_loaded", self.current_day))
             return True
         return False
 
@@ -259,7 +259,7 @@ class Game:
 
         world_name = self.world_settings.get("world_name", "autosave").replace(" ", "_")
         if save_game(game_data, world_name):
-            self.event_system.add_log("✓ 게임이 저장되었습니다.")
+            self.event_system.add_log(t("log_game_saved"))
             SoundGenerator.play("craft_complete")
 
     # ============================================================
@@ -377,18 +377,18 @@ class Game:
                                self.interior_building_ref.building_type == "shelter":
                                 self.player.inventory.remove_item(value, 1)
                                 self.player.shelter_defense += 10
-                                self.event_system.add_log(f"바리케이드를 설치했습니다! (방어도 +10 → {self.player.shelter_defense})")
+                                self.event_system.add_log(t("log_barricade_installed", self.player.shelter_defense))
                                 SoundGenerator.play("pickup")
                             else:
-                                self.event_system.add_log("바리케이드 재료는 은신처 내부에서만 사용할 수 있습니다.")
+                                self.event_system.add_log(t("log_barricade_only_inside"))
                                 SoundGenerator.play("error")
                         elif self.player.use_item(value):
-                            self.event_system.add_log(f"'{value}'을(를) 사용했습니다.")
+                            self.event_system.add_log(t("log_item_used", value))
                             SoundGenerator.play("pickup")
                     elif action == "equip":
                         equip_world = self.current_interior if self.player.is_interior else self.world
                         if self.player.equip_item(value, equip_world):
-                            self.event_system.add_log(f"'{value}'을(를) 장착했습니다.")
+                            self.event_system.add_log(t("log_item_equipped", value))
                             SoundGenerator.play("pickup")
                     elif action == "drop_item":
                         # 아이템 바닥에 버리기
@@ -398,7 +398,7 @@ class Game:
                                 self.current_interior.drop_item(value, self.player.x, self.player.y)
                             else:
                                 self.world.drop_item(value, self.player.x, self.player.y)
-                            self.event_system.add_log(f"'{value}'을(를) 버렸습니다.")
+                            self.event_system.add_log(t("log_item_dropped", value))
                             SoundGenerator.play("pickup")
                     elif action == "unequip":
                         # 장착 해제
@@ -406,10 +406,10 @@ class Game:
                         if item:
                             if self.player.inventory.add_item(item):
                                 self.player.equipped[value] = None
-                                self.event_system.add_log(f"'{item}'을(를) 해제했습니다.")
+                                self.event_system.add_log(t("log_item_unequipped", item))
                                 SoundGenerator.play("pickup")
                             else:
-                                self.event_system.add_log("인벤토리 빈 공간이 부족합니다!")
+                                self.event_system.add_log(t("log_inventory_full"))
                 return
 
         if self.crafting_ui.visible:
@@ -420,7 +420,7 @@ class Game:
                     action, recipe_name = result
                     if action == "craft":
                         if self.player.crafting.start_craft(recipe_name, self.player.inventory):
-                            self.event_system.add_log(f"'{recipe_name}' 제작을 시작합니다...")
+                            self.event_system.add_log(t("log_crafting_started", recipe_name))
                             SoundGenerator.play("craft_complete")
                 return
 
@@ -477,14 +477,14 @@ class Game:
                             5)
                 elif action == "kill":
                     SoundGenerator.play("zombie_die")
-                    self.event_system.add_log("좀비를 처치했습니다!")
+                    self.event_system.add_log(t("log_zombie_killed"))
                     if target:
                         loot = target.get_loot()
                         for item in loot:
                             self.world.drop_item(item, target.x, target.y)
-                            self.event_system.add_log(f"  [{item}] 드롭!")
+                            self.event_system.add_log(t("log_item_dropped_by_zombie", item))
                 elif action == "no_ammo":
-                    self.event_system.add_log("탄약이 부족합니다!")
+                    self.event_system.add_log(t("log_ammo_lacking"))
                 elif action == "gunshot_fired":
                     SoundGenerator.play("gunshot")
                     self._trigger_gunshot_noise(self.player.x, self.player.y, False)
@@ -719,10 +719,10 @@ class Game:
                     z.update(dt, self.player.x, self.player.y, current_world, self.player.is_crouching)
                     if z.state == "attack" and z.can_attack():
                         damage = z.do_attack()
-                        actual = self.player.take_damage(damage, "은신형 좀비")
+                        actual = self.player.take_damage(damage, t("stealth_zombie"))
                         if actual > 0:
                             self.combat_system.damage_numbers.append((self.player.x, self.player.y - 0.5, actual, 1.0, (255, 60, 60)))
-                            self.event_system.add_log(f"은신형 좀비에게 {int(actual)} 피해!")
+                            self.event_system.add_log(t("log_stealth_zombie_damage", int(actual)))
                             if self.camera: self.camera.shake(3, 0.2)
                             self.interior_camera.shake(3, 0.2)
         else:
@@ -776,7 +776,7 @@ class Game:
 
     def _on_new_day(self):
         """새로운 날 시작"""
-        self.event_system.add_log(f"═══ Day {self.current_day} ═══")
+        self.event_system.add_log(t("log_day_header", self.current_day))
         SoundGenerator.play("day_start")
 
         # 새 날 이벤트
@@ -786,7 +786,7 @@ class Game:
         biome = self.world.get_biome(int(self.player.x), int(self.player.y))
         if biome not in self.player.discovered_biomes:
             self.player.discovered_biomes.add(biome)
-            self.event_system.add_log(f"새로운 지역 발견: {biome}")
+            self.event_system.add_log(t("log_new_biome", biome))
 
         # 자동 저장 (5일마다)
         if self.current_day % 5 == 0:
@@ -820,10 +820,10 @@ class Game:
                     zombie_count = int(zombie_count * 2)  # 호드 밤은 2배
                 self.raid_strength = zombie_count
                 if is_horde_night:
-                    self.event_system.add_log(f"⚠ [호드 경고] 오늘 밤 대규모 좀비 습격이 예상됩니다! ({zombie_count}마리)")
+                    self.event_system.add_log(t("log_horde_warning", zombie_count))
                 else:
-                    self.event_system.add_log(f"⚠ [습격 경고] 오늘 밤 좀비 무리가 접근하고 있습니다... ({zombie_count}마리)")
-                self.hud.add_notification("⚠ 습격 예보! 방어를 준비하세요!", 5.0)
+                    self.event_system.add_log(t("log_raid_warning", zombie_count))
+                self.hud.add_notification(t("notify_raid_forecast"), 5.0)
 
         # 22:00 - 습격 좀비 스폰
         if hour >= 22.0 and self.raid_active and not self.raid_spawned:
@@ -835,8 +835,8 @@ class Game:
             alive_raid = [z for z in self.raid_zombies if not z.is_dead and z.active]
             if len(alive_raid) == 0:
                 self.raid_active = False
-                self.event_system.add_log("★ 습격 방어 완료: 좀비 무리를 모두 물리쳤습니다! ★")
-                self.hud.add_notification("★ 습격 방어 성공! ★", 4.0)
+                self.event_system.add_log(t("log_raid_defended"))
+                self.hud.add_notification(t("notify_raid_defended"), 4.0)
 
         # 06:00 - 아직 활성 상태이면 자동 해결
         if 6.0 <= hour < 7.0 and self.raid_active and self.raid_spawned:
@@ -869,7 +869,7 @@ class Game:
             self.raid_zombies.append(z)
             self.entity_manager.zombies.append(z)
 
-        self.event_system.add_log(f"⚔ 습격 시작! {count}마리의 좀비가 은신처를 공격합니다!")
+        self.event_system.add_log(t("log_raid_started", count))
 
     def _resolve_raid(self):
         """습격 자동 해결 (방어도 대조)"""
@@ -880,14 +880,14 @@ class Game:
             # 완전 방어: 방어도 차감
             cost = alive_count
             self.player.shelter_defense = max(0, defense - cost)
-            self.event_system.add_log(f"★ 바리케이드가 습격을 막아냈습니다! (방어도 -{cost})")
+            self.event_system.add_log(t("log_barricade_blocked", cost))
         else:
             # 돌파: HP 손실 + 스트레스 증가 + 방어도 전소
             breach_damage = (alive_count - defense // 2) * 5
             self.player.hp -= breach_damage
             self.player.stress += 25
             self.player.shelter_defense = 0
-            self.event_system.add_log(f"✕ 바리케이드가 돌파되었습니다! (HP -{int(breach_damage)}, 방어도 → 0)")
+            self.event_system.add_log(t("log_barricade_breached", int(breach_damage)))
 
         # 남은 습격 좀비 정리
         for z in self.raid_zombies:

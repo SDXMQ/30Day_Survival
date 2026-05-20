@@ -6,6 +6,7 @@ from items import ITEM_DATABASE, ItemCategory
 from crafting import CRAFTING_RECIPES, RECIPE_CATEGORIES
 from utils import wrap_text, ease_out_cubic, lerp
 from .fonts import FontManager
+from i18n import t
 
 
 class InventoryUI:
@@ -103,7 +104,7 @@ class InventoryUI:
         return None
 
     def _get_panel_rects(self):
-        t = ease_out_cubic(self.animation_progress)
+        t_val = ease_out_cubic(self.animation_progress)
         cols = 6
         slot_size = 48
         gap = 6
@@ -115,7 +116,7 @@ class InventoryUI:
         total_w = inv_w + 10 + eq_w
         
         px = (self.sw - total_w) // 2
-        py = int((self.sh - panel_h) / 2 + (1 - t) * 30)
+        py = int((self.sh - panel_h) / 2 + (1 - t_val) * 30)
         
         return px, py, eq_w, inv_w, panel_h, slot_size, gap, cols
 
@@ -145,42 +146,43 @@ class InventoryUI:
         if not self.visible:
             return
 
-        t = ease_out_cubic(self.animation_progress)
+        t_val = ease_out_cubic(self.animation_progress)
         overlay = pygame.Surface((self.sw, self.sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, int(120 * t)))
+        overlay.fill((0, 0, 0, int(120 * t_val)))
         surface.blit(overlay, (0, 0))
 
         px, py, eq_w, inv_w, panel_h, slot_size, gap, cols = self._get_panel_rects()
         inv_px = px + eq_w + 10
 
         # 장비 패널
-        draw_rounded_rect(surface, (20, 22, 35, int(230 * t)), (px, py, eq_w, panel_h), radius=12)
-        draw_rounded_rect(surface, Colors.UI_BORDER + (int(150 * t),), (px, py, eq_w, panel_h), radius=12)
+        draw_rounded_rect(surface, (20, 22, 35, int(230 * t_val)), (px, py, eq_w, panel_h), radius=12)
+        draw_rounded_rect(surface, Colors.UI_BORDER + (int(150 * t_val),), (px, py, eq_w, panel_h), radius=12)
         
         # 인벤토리 패널
-        draw_rounded_rect(surface, (20, 22, 35, int(230 * t)), (inv_px, py, inv_w, panel_h), radius=12)
-        draw_rounded_rect(surface, Colors.UI_BORDER + (int(150 * t),), (inv_px, py, inv_w, panel_h), radius=12)
+        draw_rounded_rect(surface, (20, 22, 35, int(230 * t_val)), (inv_px, py, inv_w, panel_h), radius=12)
+        draw_rounded_rect(surface, Colors.UI_BORDER + (int(150 * t_val),), (inv_px, py, inv_w, panel_h), radius=12)
 
         font_title = FontManager.get(18)
         font_small = FontManager.get(11)
         font_count = FontManager.get(10)
 
         # 타이틀
-        title = font_title.render("인벤토리", True, Colors.UI_ACCENT)
+        title = font_title.render(t("inventory"), True, Colors.UI_ACCENT)
         surface.blit(title, (inv_px + 15, py + 10))
         
-        eq_title = font_small.render("장비", True, Colors.UI_ACCENT)
+        eq_title = font_small.render(t("equipment"), True, Colors.UI_ACCENT)
         surface.blit(eq_title, (px + 25, py + 15))
 
         # 무게
+        weight_label = t("weight")
         weight_text = font_small.render(
-            f"무게: {player.inventory.current_weight:.1f} / {player.inventory.max_weight:.1f} kg",
+            f"{weight_label}: {player.inventory.current_weight:.1f} / {player.inventory.max_weight:.1f} kg",
             True, Colors.UI_TEXT_DIM if player.inventory.current_weight <= player.inventory.max_weight * 0.8 else (255, 100, 100)
         )
         surface.blit(weight_text, (inv_px + inv_w - weight_text.get_width() - 15, py + 15))
 
         # 장비 슬롯 그리기
-        eq_labels = {"head": "머리", "body": "상의", "feet": "신발", "weapon": "무기"}
+        eq_labels = {"head": t("equip_head"), "body": t("equip_body"), "feet": t("equip_feet"), "weapon": t("equip_weapon")}
         slots = ["head", "body", "feet", "weapon"]
         for i, eq_slot in enumerate(slots):
             sx = px + 16
@@ -239,14 +241,13 @@ class InventoryUI:
         if hover_item:
             data = ITEM_DATABASE.get(hover_item, {})
             info_y = py + panel_h - 60
-            name_surf = font_small.render(f"{hover_item}", True, Colors.UI_ACCENT_WARM)
+            name_surf = font_small.render(t(hover_item), True, Colors.UI_ACCENT_WARM)
             surface.blit(name_surf, (inv_px + 15, info_y))
 
-            desc = data.get("description", "")
-            desc_surf = font_small.render(desc[:40], True, Colors.UI_TEXT_DIM)
+            desc_surf = font_small.render(t(f"desc_{hover_item}")[:40], True, Colors.UI_TEXT_DIM)
             surface.blit(desc_surf, (inv_px + 15, info_y + 16))
 
-            hint = font_small.render("좌클릭: 사용  |  드래그: 장착/해제  |  우클릭: 버리기", True, (100, 105, 120))
+            hint = font_small.render(t("inventory_hint"), True, (100, 105, 120))
             surface.blit(hint, (inv_px + 15, info_y + 32))
 
         # 드래그 중인 아이템 그리기 (마지막에 그려서 맨 위에 오게 함)
@@ -256,4 +257,3 @@ class InventoryUI:
             dx = self.drag_mouse_pos[0] - icon.get_width() // 2
             dy = self.drag_mouse_pos[1] - icon.get_height() // 2
             surface.blit(icon, (dx, dy))
-

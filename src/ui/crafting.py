@@ -6,6 +6,7 @@ from items import ITEM_DATABASE, ItemCategory
 from crafting import CRAFTING_RECIPES, RECIPE_CATEGORIES
 from utils import wrap_text, ease_out_cubic, lerp
 from .fonts import FontManager
+from i18n import t
 
 
 class CraftingUI:
@@ -74,23 +75,23 @@ class CraftingUI:
         if not self.visible:
             return
 
-        t = ease_out_cubic(self.animation_progress)
+        t_val = ease_out_cubic(self.animation_progress)
         overlay = pygame.Surface((self.sw, self.sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, int(120 * t)))
+        overlay.fill((0, 0, 0, int(120 * t_val)))
         surface.blit(overlay, (0, 0))
 
         panel_w, panel_h = 400, 420
         px = (self.sw - panel_w) // 2
-        py = int((self.sh - panel_h) / 2 + (1 - t) * 30)
+        py = int((self.sh - panel_h) / 2 + (1 - t_val) * 30)
 
-        draw_rounded_rect(surface, (20, 22, 35, int(230 * t)), (px, py, panel_w, panel_h), radius=12)
-        draw_rounded_rect(surface, Colors.UI_BORDER + (int(150 * t),), (px, py, panel_w, panel_h), radius=12)
+        draw_rounded_rect(surface, (20, 22, 35, int(230 * t_val)), (px, py, panel_w, panel_h), radius=12)
+        draw_rounded_rect(surface, Colors.UI_BORDER + (int(150 * t_val),), (px, py, panel_w, panel_h), radius=12)
 
         font_title = FontManager.get(18)
         font = FontManager.get(12)
         font_small = FontManager.get(10)
 
-        title = font_title.render("크래프팅", True, Colors.UI_ACCENT)
+        title = font_title.render(t("crafting"), True, Colors.UI_ACCENT)
         surface.blit(title, (px + 15, py + 10))
 
         recipes = player.crafting.get_all_recipes_with_status(player.inventory)
@@ -116,18 +117,17 @@ class CraftingUI:
             draw_rounded_rect(surface, bg, (px + 10, ry, panel_w - 20, 36), radius=4)
 
             name_color = Colors.UI_TEXT if can_craft else Colors.UI_TEXT_DIM
-            name_surf = font.render(recipe["name"], True, name_color)
+            name_surf = font.render(t(recipe["name"]), True, name_color)
             surface.blit(name_surf, (px + 20, ry + 4))
 
             # 재료 표시
             mats = []
             for item_name, (have, need) in recipe["ingredients_status"].items():
                 color = Colors.UI_SUCCESS if have >= need else Colors.UI_DANGER
-                mats.append((f"{item_name}({have}/{need})", color))
+                mats.append((f"{t(item_name)}({have}/{need})", color))
 
             mx = px + 20
             for mat_text, mat_color in mats:
                 ms = font_small.render(mat_text, True, mat_color)
                 surface.blit(ms, (mx, ry + 20))
                 mx += ms.get_width() + 8
-

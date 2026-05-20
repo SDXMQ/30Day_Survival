@@ -6,6 +6,7 @@ from items import ITEM_DATABASE, ItemCategory
 from crafting import CRAFTING_RECIPES, RECIPE_CATEGORIES
 from utils import wrap_text, ease_out_cubic, lerp
 from .fonts import FontManager
+from i18n import t, get_language, set_language, get_language_name, get_available_languages
 
 
 class MainMenuUI:
@@ -15,10 +16,10 @@ class MainMenuUI:
         self.sw = screen_w
         self.sh = screen_h
         self.buttons = [
-            ("새 게임", "new_game"),
-            ("이어하기", "load_game"),
-            ("설정", "settings"),
-            ("종료", "quit"),
+            ("new_game", "new_game"),
+            ("load_game", "load_game"),
+            ("settings", "settings"),
+            ("quit", "quit"),
         ]
         self.hover_index = -1
         self.title_glow_timer = 0
@@ -55,9 +56,8 @@ class MainMenuUI:
 
         # 그라데이션 오버레이
         for y in range(self.sh):
-            t = y / self.sh
-            alpha = int(20 * t)
-            pygame.draw.line(surface, (30 + int(10 * t), 15, 20 + int(15 * t)), (0, y), (self.sw, y))
+            t_val = y / self.sh
+            pygame.draw.line(surface, (30 + int(10 * t_val), 15, 20 + int(15 * t_val)), (0, y), (self.sw, y))
 
         font_title = FontManager.get(48)
         font_sub = FontManager.get(16)
@@ -65,7 +65,7 @@ class MainMenuUI:
         font_small = FontManager.get(11)
 
         # 타이틀
-        title = "30일간의 생존"
+        title = t("game_title")
         title_surf = font_title.render(title, True, Colors.UI_ACCENT_WARM)
         tx = (self.sw - title_surf.get_width()) // 2
         ty = int(self.sh * 0.2 + self.title_y_offset)
@@ -78,11 +78,11 @@ class MainMenuUI:
         surface.blit(title_surf, (tx, ty))
 
         # 부제
-        sub = font_sub.render("좀비 아포칼립스 오픈월드 서바이벌", True, Colors.UI_TEXT_DIM)
+        sub = font_sub.render(t("game_subtitle"), True, Colors.UI_TEXT_DIM)
         surface.blit(sub, ((self.sw - sub.get_width()) // 2, ty + 60))
 
         # 버튼
-        for i, (text, action) in enumerate(self.buttons):
+        for i, (key, action) in enumerate(self.buttons):
             bw, bh = 260, 45
             bx = (self.sw - bw) // 2
             by = self.sh // 2 + 30 + i * 60
@@ -98,12 +98,12 @@ class MainMenuUI:
                 pygame.draw.rect(surface, Colors.UI_BORDER, (bx, by, bw, bh), 1, border_radius=8)
                 color = Colors.UI_TEXT
 
-            btn_surf = font_btn.render(text, True, color)
+            btn_surf = font_btn.render(t(key), True, color)
             surface.blit(btn_surf, (bx + (bw - btn_surf.get_width()) // 2,
                                     by + (bh - btn_surf.get_height()) // 2))
 
         # 하단 정보
-        ver = font_small.render("v1.0  |  Python + Pygame", True, (60, 65, 75))
+        ver = font_small.render(t("version_info"), True, (60, 65, 75))
         surface.blit(ver, ((self.sw - ver.get_width()) // 2, self.sh - 30))
 
 
@@ -119,16 +119,16 @@ class WorldCreationUI:
         self.settings["difficulty"] = self.difficulty_names[self.diff_index]
 
         self.sliders = {
-            "day_length_minutes": {"label": "하루 길이(분)", "min": 5, "max": 30, "step": 1},
-            "resource_density": {"label": "자원 밀도", "min": 0.2, "max": 3.0, "step": 0.1},
-            "weather_variability": {"label": "날씨 변동성", "min": 0.0, "max": 2.0, "step": 0.1},
-            "zombie_activity": {"label": "좀비 활동량", "min": 0.0, "max": 2.0, "step": 0.1},
-            "building_density": {"label": "건물 밀도", "min": 0.5, "max": 2.0, "step": 0.1},
-            "total_days": {"label": "생존 일수", "min": 10, "max": 100, "step": 5},
+            "day_length_minutes": {"label_key": "day_length", "min": 5, "max": 30, "step": 1},
+            "resource_density": {"label_key": "resource_density", "min": 0.2, "max": 3.0, "step": 0.1},
+            "weather_variability": {"label_key": "weather_variability", "min": 0.0, "max": 2.0, "step": 0.1},
+            "zombie_activity": {"label_key": "zombie_activity", "min": 0.0, "max": 2.0, "step": 0.1},
+            "building_density": {"label_key": "building_density", "min": 0.5, "max": 2.0, "step": 0.1},
+            "total_days": {"label_key": "survival_days", "min": 10, "max": 100, "step": 5},
         }
         self.hover_button = ""
         self.dragging_slider = None
-        self.world_name_input = "월드 1"
+        self.world_name_input = t("world_name_default")
         self.name_editing = False
 
     def handle_event(self, event):
@@ -220,16 +220,16 @@ class WorldCreationUI:
         draw_rounded_rect(surface, (20, 22, 35, 240), (px, py, panel_w, panel_h), radius=12)
         draw_rounded_rect(surface, Colors.UI_BORDER, (px, py, panel_w, panel_h), radius=12)
 
-        title = font_title.render("새 월드 생성", True, Colors.UI_ACCENT)
+        title = font_title.render(t("world_creation_title"), True, Colors.UI_ACCENT)
         surface.blit(title, (px + (panel_w - title.get_width()) // 2, py + 10))
 
         # 뒤로 버튼
-        back_surf = font_small.render("◀ 뒤로", True, Colors.UI_TEXT_DIM)
+        back_surf = font_small.render(t("back"), True, Colors.UI_TEXT_DIM)
         surface.blit(back_surf, (px + 15, py + 15))
 
         # 월드 이름
         name_y = py + 48
-        name_label = font.render("월드 이름:", True, Colors.UI_TEXT)
+        name_label = font.render(t("world_name"), True, Colors.UI_TEXT)
         surface.blit(name_label, (px + 20, name_y))
         name_box_color = Colors.UI_ACCENT if self.name_editing else Colors.UI_BORDER
         pygame.draw.rect(surface, name_box_color, (px + 200, name_y - 2, 250, 26), 1, border_radius=4)
@@ -238,7 +238,7 @@ class WorldCreationUI:
 
         # 난이도
         diff_y = py + 82
-        diff_label = font.render("난이도:", True, Colors.UI_TEXT)
+        diff_label = font.render(t("difficulty"), True, Colors.UI_TEXT)
         surface.blit(diff_label, (px + 20, diff_y))
 
         # 화살표
@@ -246,12 +246,15 @@ class WorldCreationUI:
         surface.blit(arrow_l, (px + 200, diff_y - 2))
 
         diff_name = self.difficulty_names[self.diff_index]
+        diff_data = DIFFICULTY_PRESETS.get(diff_name, {})
+        diff_id = diff_data.get("id", "normal")
+        
         diff_color = Colors.UI_SUCCESS
         if self.diff_index >= 3:
             diff_color = Colors.UI_WARNING
         if self.diff_index >= 4:
             diff_color = Colors.UI_DANGER
-        diff_text = font_diff.render(diff_name, True, diff_color)
+        diff_text = font_diff.render(t(diff_id), True, diff_color)
         diff_cx = px + 200 + 125 - diff_text.get_width() // 2
         surface.blit(diff_text, (diff_cx, diff_y - 2))
 
@@ -259,15 +262,14 @@ class WorldCreationUI:
         surface.blit(arrow_r, (px + 400, diff_y - 2))
 
         # 난이도 설명
-        diff_data = DIFFICULTY_PRESETS.get(diff_name, {})
-        desc = diff_data.get("description", "")
+        desc = t(f"desc_{diff_id}")
         desc_surf = font_small.render(desc[:50], True, Colors.UI_TEXT_DIM)
         surface.blit(desc_surf, (px + 20, diff_y + 22))
 
         # 슬라이더
         for i, (key, slider) in enumerate(self.sliders.items()):
             sy = py + 130 + i * 45
-            label = font.render(slider["label"] + ":", True, Colors.UI_TEXT)
+            label = font.render(t(slider["label_key"]) + ":", True, Colors.UI_TEXT)
             surface.blit(label, (px + 20, sy))
 
             sx = px + 200
@@ -298,7 +300,7 @@ class WorldCreationUI:
         pygame.draw.rect(surface, check_color, (px + 20, sandbox_y, 18, 18), border_radius=3)
         if is_sandbox:
             pygame.draw.rect(surface, Colors.UI_ACCENT, (px + 23, sandbox_y + 3, 12, 12), border_radius=2)
-        sandbox_label = font.render("🔧 샌드박스 모드 (모든 아이템 지급)", True,
+        sandbox_label = font.render(t("sandbox_mode"), True,
                                     Colors.UI_ACCENT if is_sandbox else Colors.UI_TEXT_DIM)
         surface.blit(sandbox_label, (px + 44, sandbox_y + 1))
 
@@ -308,9 +310,9 @@ class WorldCreationUI:
         btn_y = py + panel_h - 55
         draw_rounded_rect(surface, Colors.UI_ACCENT + (40,), (btn_x, btn_y, btn_w, btn_h), radius=8)
         pygame.draw.rect(surface, Colors.UI_ACCENT, (btn_x, btn_y, btn_w, btn_h), 2, border_radius=8)
-        start = font.render("월드 생성 시작", True, Colors.UI_ACCENT)
+        start = font.render(t("start_world"), True, Colors.UI_ACCENT)
         surface.blit(start, (btn_x + (btn_w - start.get_width()) // 2,
-                            btn_y + (btn_h - start.get_height()) // 2))
+                             btn_y + (btn_h - start.get_height()) // 2))
 
     def get_settings(self):
         return dict(self.settings)
@@ -328,11 +330,17 @@ class SettingsUI:
             if list(res) == self.game_settings.resolution:
                 self.res_index = i
                 break
+        self.langs = get_available_languages()
+        self.lang_index = 0
+        for i, lang in enumerate(self.langs):
+            if lang == self.game_settings.language:
+                self.lang_index = i
+                break
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
-            panel_w, panel_h = 420, 350
+            panel_w, panel_h = 420, 390
             px = (self.sw - panel_w) // 2
             py = (self.sh - panel_h) // 2
 
@@ -348,11 +356,20 @@ class SettingsUI:
             if px + 200 <= mx <= px + 350 and fs_y <= my <= fs_y + 30:
                 self.game_settings.fullscreen = not self.game_settings.fullscreen
 
+            # 언어 변경
+            lang_y = py + 180
+            if px + 200 <= mx <= px + 220 and lang_y <= my <= lang_y + 25:
+                self.lang_index = (self.lang_index - 1) % len(self.langs)
+            elif px + 370 <= mx <= px + 390 and lang_y <= my <= lang_y + 25:
+                self.lang_index = (self.lang_index + 1) % len(self.langs)
+
             # 적용 버튼
             apply_y = py + panel_h - 55
             if px + panel_w // 2 - 60 <= mx <= px + panel_w // 2 + 60 and apply_y <= my <= apply_y + 40:
                 res = RESOLUTION_OPTIONS[self.res_index]
                 self.game_settings.resolution = list(res)
+                self.game_settings.language = self.langs[self.lang_index]
+                set_language(self.game_settings.language)
                 self.game_settings.save()
                 return "apply"
 
@@ -369,21 +386,21 @@ class SettingsUI:
         font = FontManager.get(14)
         font_small = FontManager.get(11)
 
-        panel_w, panel_h = 420, 350
+        panel_w, panel_h = 420, 390
         px = (self.sw - panel_w) // 2
         py = (self.sh - panel_h) // 2
 
         draw_rounded_rect(surface, (20, 22, 35, 240), (px, py, panel_w, panel_h), radius=12)
 
-        title = font_title.render("설정", True, Colors.UI_ACCENT)
+        title = font_title.render(t("settings_title"), True, Colors.UI_ACCENT)
         surface.blit(title, (px + (panel_w - title.get_width()) // 2, py + 15))
 
-        back_surf = font_small.render("◀ 뒤로", True, Colors.UI_TEXT_DIM)
+        back_surf = font_small.render(t("back"), True, Colors.UI_TEXT_DIM)
         surface.blit(back_surf, (px + 15, py + 15))
 
         # 해상도
         res_y = py + 60
-        res_label = font.render("해상도:", True, Colors.UI_TEXT)
+        res_label = font.render(t("resolution"), True, Colors.UI_TEXT)
         surface.blit(res_label, (px + 20, res_y))
 
         arrow_l = font.render("◀", True, Colors.UI_ACCENT)
@@ -398,22 +415,37 @@ class SettingsUI:
 
         # 전체화면
         fs_y = py + 100
-        fs_label = font.render("화면 모드:", True, Colors.UI_TEXT)
+        fs_label = font.render(t("screen_mode"), True, Colors.UI_TEXT)
         surface.blit(fs_label, (px + 20, fs_y))
 
-        fs_text = "전체화면" if self.game_settings.fullscreen else "창 모드"
+        fs_text = t("fullscreen") if self.game_settings.fullscreen else t("windowed")
         fs_color = Colors.UI_SUCCESS if self.game_settings.fullscreen else Colors.UI_TEXT
         fs_surf = font.render(f"[ {fs_text} ]", True, fs_color)
         surface.blit(fs_surf, (px + 200, fs_y))
 
         # 파티클
         pq_y = py + 140
-        pq_label = font.render("파티클 품질:", True, Colors.UI_TEXT)
+        pq_label = font.render(t("particle_quality"), True, Colors.UI_TEXT)
         surface.blit(pq_label, (px + 20, pq_y))
-        pq_names = ["끔", "낮음", "보통", "높음"]
+        pq_names = [t("particle_none"), t("particle_low"), t("particle_normal"), t("particle_high")]
         pq = self.game_settings.particles_quality
         pq_surf = font.render(pq_names[pq], True, Colors.UI_TEXT)
         surface.blit(pq_surf, (px + 200, pq_y))
+
+        # 언어
+        lang_y = py + 180
+        lang_label = font.render(t("language"), True, Colors.UI_TEXT)
+        surface.blit(lang_label, (px + 20, lang_y))
+
+        arrow_l2 = font.render("◀", True, Colors.UI_ACCENT)
+        surface.blit(arrow_l2, (px + 200, lang_y))
+
+        lang_code = self.langs[self.lang_index]
+        lang_text = font.render(get_language_name(lang_code), True, Colors.UI_TEXT)
+        surface.blit(lang_text, (px + 260, lang_y))
+
+        arrow_r2 = font.render("▶", True, Colors.UI_ACCENT)
+        surface.blit(arrow_r2, (px + 370, lang_y))
 
         # 적용 버튼
         apply_y = py + panel_h - 55
@@ -421,7 +453,7 @@ class SettingsUI:
         btn_x = px + (panel_w - btn_w) // 2
         draw_rounded_rect(surface, Colors.UI_ACCENT + (40,), (btn_x, apply_y, btn_w, btn_h), radius=8)
         pygame.draw.rect(surface, Colors.UI_ACCENT, (btn_x, apply_y, btn_w, btn_h), 2, border_radius=8)
-        apply_text = font.render("적용", True, Colors.UI_ACCENT)
+        apply_text = font.render(t("apply"), True, Colors.UI_ACCENT)
         surface.blit(apply_text, (btn_x + (btn_w - apply_text.get_width()) // 2,
                                  apply_y + (btn_h - apply_text.get_height()) // 2))
 
@@ -433,10 +465,10 @@ class PauseUI:
         self.sw = screen_w
         self.sh = screen_h
         self.buttons = [
-            ("게임으로 돌아가기", "resume"),
-            ("저장하기", "save"),
-            ("설정", "settings"),
-            ("메인 메뉴로", "main_menu"),
+            ("resume", "resume"),
+            ("save_game", "save"),
+            ("settings", "settings"),
+            ("save_and_quit", "main_menu"),
         ]
         self.hover_index = -1
 
@@ -468,10 +500,10 @@ class PauseUI:
         font_title = FontManager.get(28)
         font_btn = FontManager.get(16)
 
-        title = font_title.render("일시정지", True, Colors.UI_TEXT)
+        title = font_title.render(t("paused"), True, Colors.UI_TEXT)
         surface.blit(title, ((self.sw - title.get_width()) // 2, self.sh // 2 - 100))
 
-        for i, (text, action) in enumerate(self.buttons):
+        for i, (key, action) in enumerate(self.buttons):
             bw, bh = 220, 40
             bx = (self.sw - bw) // 2
             by = self.sh // 2 - 40 + i * 55
@@ -486,7 +518,7 @@ class PauseUI:
                 draw_rounded_rect(surface, (30, 35, 50, 180), (bx, by, bw, bh), radius=6)
                 color = Colors.UI_TEXT
 
-            btn_surf = font_btn.render(text, True, color)
+            btn_surf = font_btn.render(t(key), True, color)
             surface.blit(btn_surf, (bx + (bw - btn_surf.get_width()) // 2,
                                     by + (bh - btn_surf.get_height()) // 2))
 
@@ -541,27 +573,28 @@ class EndingUI:
         font_small = FontManager.get(12)
 
         if self.phase >= 1:
-            title = self.ending_data.get("title", "엔딩")
-            title_surf = font_title.render(title, True, Colors.UI_ACCENT_WARM)
+            title_val = self.ending_data.get("title", "ending_survived")
+            title_surf = font_title.render(t(title_val), True, Colors.UI_ACCENT_WARM)
             tx = (self.sw - title_surf.get_width()) // 2
             surface.blit(title_surf, (tx, self.sh // 4))
 
         if self.phase >= 2:
-            desc = self.ending_data.get("description", "")
-            lines = desc.split("\n")
+            desc_val = self.ending_data.get("description", "")
+            # 만약 개별 줄바꿈 번역이 곤란하다면 key 매칭 또는 개별 줄 단위 t() 적용
+            lines = desc_val.split("\n")
             for i, line in enumerate(lines):
-                line_surf = font.render(line, True, Colors.UI_TEXT)
+                line_surf = font.render(t(line), True, Colors.UI_TEXT)
                 surface.blit(line_surf, ((self.sw - line_surf.get_width()) // 2,
                                        self.sh // 3 + 40 + i * 24))
 
         if self.phase >= 3 and self.player_stats:
             stats_y = self.sh // 2 + 40
             stats = [
-                f"생존 일수: {self.player_stats['days']}일",
-                f"좀비 처치: {self.player_stats['kills']}마리",
-                f"크래프팅: {self.player_stats['crafted']}회",
-                f"은신처 방어도: {self.player_stats['defense']}",
-                f"최종 체력: {self.player_stats['hp']}",
+                f"{t('survival_days')}: {self.player_stats['days']}{t('day')}",
+                f"{t('kills')}: {self.player_stats['kills']}",
+                f"{t('crafting')}: {self.player_stats['crafted']}",
+                f"{t('defense')}: {self.player_stats['defense']}",
+                f"{t('hp')}: {self.player_stats['hp']}",
             ]
             for i, stat in enumerate(stats):
                 stat_surf = font_small.render(stat, True, Colors.UI_TEXT_DIM)
@@ -570,6 +603,6 @@ class EndingUI:
 
             # 계속하기 안내
             if self.animation_timer > 1:
-                hint = font_small.render("클릭하여 메인 메뉴로 돌아가기", True, Colors.UI_ACCENT)
+                hint = font_small.render(t("click_to_main"), True, Colors.UI_ACCENT)
                 hint.set_alpha(int(128 + 127 * math.sin(self.animation_timer * 3)))
                 surface.blit(hint, ((self.sw - hint.get_width()) // 2, self.sh - 50))

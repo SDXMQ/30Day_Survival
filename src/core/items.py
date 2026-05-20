@@ -545,50 +545,75 @@ class Inventory:
         # 무게 체크 (샌드박스 제외)
         item_weight = data.get("weight", 0.1)
         if not self.is_sandbox:
-            if self.current_weight + (item_weight * count) > self.max_weight:
+            if self.current_weight + (item_weight * count) - 1e-7 > self.max_weight:
                 return False  # 무게 초과 시 수급 불가
 
-        # 스택 가능한 아이템
+        # 임시 시뮬레이션용 인벤토리 복제
+        temp_items = list(self.items)
+        temp_count = count
+
+        # 스택 가능한 아이템 처리 시뮬레이션
         if data.get("stackable"):
             max_stack = data.get("max_stack", 99)
-            for i, (name, cnt) in enumerate(self.items):
+            for i, (name, cnt) in enumerate(temp_items):
                 if name == item_name and cnt < max_stack:
-                    add = min(count, max_stack - cnt)
+                    add = min(temp_count, max_stack - cnt)
                     
-                    # 무게 한도 내에서만 추가 시도
                     if not self.is_sandbox:
-                        # 추가 가능한 최대 개수 계산 (무게 기반)
-                        rem_weight = self.max_weight - self.current_weight
-                        max_can_add = int(rem_weight / item_weight) if item_weight > 0 else add
-                        add = min(add, max_can_add)
-                        if add <= 0: return False
+                        # 임시 무게 계산
+                        temp_current_weight = 0.0
+                        for t_name, t_cnt in temp_items:
+                            t_data = ITEM_DATABASE.get(t_name, {})
+                            temp_current_weight += t_data.get("weight", 0.1) * t_cnt
                         
-                    self.items[i] = (name, cnt + add)
-                    count -= add
-                    if count <= 0:
-                        return True
+                        rem_weight = self.max_weight - temp_current_weight
+                        max_can_add = int((rem_weight + 1e-7) / item_weight) if item_weight > 0 else add
+                        add = min(add, max_can_add)
+                        if add <= 0:
+                            break
+                            
+                    temp_items[i] = (name, cnt + add)
+                    temp_count -= add
+                    if temp_count <= 0:
+                        break
 
-        # 새 슬롯에 추가
-        while count > 0 and len(self.items) < self.slots:
+        # 새 슬롯에 추가 시뮬레이션
+        while temp_count > 0 and len(temp_items) < self.slots:
             if data.get("stackable"):
                 max_stack = data.get("max_stack", 99)
-                add = min(count, max_stack)
+                add = min(temp_count, max_stack)
                 
                 if not self.is_sandbox:
-                    rem_weight = self.max_weight - self.current_weight
-                    max_can_add = int(rem_weight / item_weight) if item_weight > 0 else add
+                    temp_current_weight = 0.0
+                    for t_name, t_cnt in temp_items:
+                        t_data = ITEM_DATABASE.get(t_name, {})
+                        temp_current_weight += t_data.get("weight", 0.1) * t_cnt
+                    
+                    rem_weight = self.max_weight - temp_current_weight
+                    max_can_add = int((rem_weight + 1e-7) / item_weight) if item_weight > 0 else add
                     add = min(add, max_can_add)
-                    if add <= 0: return False
+                    if add <= 0:
+                        break
 
-                self.items.append((item_name, add))
-                count -= add
+                temp_items.append((item_name, add))
+                temp_count -= add
             else:
-                if not self.is_sandbox and self.current_weight + item_weight > self.max_weight:
-                    return False
-                self.items.append((item_name, 1))
-                count -= 1
+                if not self.is_sandbox:
+                    temp_current_weight = 0.0
+                    for t_name, t_cnt in temp_items:
+                        t_data = ITEM_DATABASE.get(t_name, {})
+                        temp_current_weight += t_data.get("weight", 0.1) * t_cnt
+                    
+                    if temp_current_weight + item_weight - 1e-7 > self.max_weight:
+                        break
+                temp_items.append((item_name, 1))
+                temp_count -= 1
 
-        return count <= 0
+        # 요청한 개수를 모두 담을 수 있는 경우에만 실제 인벤토리 업데이트
+        if temp_count <= 0:
+            self.items = temp_items
+            return True
+        return False
 
     def remove_item(self, item_name, count=1):
         """아이템 제거. 성공 시 True"""

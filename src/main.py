@@ -364,61 +364,65 @@ class Game:
         """게임플레이 중 이벤트"""
         # 인벤토리/크래프팅이 열려있으면 우선 처리
         if self.inventory_ui.visible:
-            result = self.inventory_ui.handle_event(event, self.player)
-            if result:
-                action, value = result
-                if action == "use":
-                    if value == "바리케이드 재료":
-                        # 바리케이드 재료는 은신처 내부에서만 사용 가능
-                        if self.player.is_interior and self.current_interior and \
-                           self.interior_building_ref and hasattr(self.interior_building_ref, 'building_type') and \
-                           self.interior_building_ref.building_type == "shelter":
+            # 단축키(I, ESC, C) 입력은 아래쪽 글로벌 단축키 처리로 통과시킴
+            if not (event.type == pygame.KEYDOWN and event.key in (pygame.K_i, pygame.K_ESCAPE, pygame.K_c)):
+                result = self.inventory_ui.handle_event(event, self.player)
+                if result:
+                    action, value = result
+                    if action == "use":
+                        if value == "바리케이드 재료":
+                            # 바리케이드 재료는 은신처 내부에서만 사용 가능
+                            if self.player.is_interior and self.current_interior and \
+                               self.interior_building_ref and hasattr(self.interior_building_ref, 'building_type') and \
+                               self.interior_building_ref.building_type == "shelter":
+                                self.player.inventory.remove_item(value, 1)
+                                self.player.shelter_defense += 10
+                                self.event_system.add_log(f"바리케이드를 설치했습니다! (방어도 +10 → {self.player.shelter_defense})")
+                                SoundGenerator.play("pickup")
+                            else:
+                                self.event_system.add_log("바리케이드 재료는 은신처 내부에서만 사용할 수 있습니다.")
+                                SoundGenerator.play("error")
+                        elif self.player.use_item(value):
+                            self.event_system.add_log(f"'{value}'을(를) 사용했습니다.")
+                            SoundGenerator.play("pickup")
+                    elif action == "equip":
+                        equip_world = self.current_interior if self.player.is_interior else self.world
+                        if self.player.equip_item(value, equip_world):
+                            self.event_system.add_log(f"'{value}'을(를) 장착했습니다.")
+                            SoundGenerator.play("pickup")
+                    elif action == "drop_item":
+                        # 아이템 바닥에 버리기
+                        if self.player.inventory.has_item(value):
                             self.player.inventory.remove_item(value, 1)
-                            self.player.shelter_defense += 10
-                            self.event_system.add_log(f"바리케이드를 설치했습니다! (방어도 +10 → {self.player.shelter_defense})")
+                            if self.player.is_interior and self.current_interior:
+                                self.current_interior.drop_item(value, self.player.x, self.player.y)
+                            else:
+                                self.world.drop_item(value, self.player.x, self.player.y)
+                            self.event_system.add_log(f"'{value}'을(를) 버렸습니다.")
                             SoundGenerator.play("pickup")
-                        else:
-                            self.event_system.add_log("바리케이드 재료는 은신처 내부에서만 사용할 수 있습니다.")
-                            SoundGenerator.play("error")
-                    elif self.player.use_item(value):
-                        self.event_system.add_log(f"'{value}'을(를) 사용했습니다.")
-                        SoundGenerator.play("pickup")
-                elif action == "equip":
-                    equip_world = self.current_interior if self.player.is_interior else self.world
-                    if self.player.equip_item(value, equip_world):
-                        self.event_system.add_log(f"'{value}'을(를) 장착했습니다.")
-                        SoundGenerator.play("pickup")
-                elif action == "drop_item":
-                    # 아이템 바닥에 버리기
-                    if self.player.inventory.has_item(value):
-                        self.player.inventory.remove_item(value, 1)
-                        if self.player.is_interior and self.current_interior:
-                            self.current_interior.drop_item(value, self.player.x, self.player.y)
-                        else:
-                            self.world.drop_item(value, self.player.x, self.player.y)
-                        self.event_system.add_log(f"'{value}'을(를) 버렸습니다.")
-                        SoundGenerator.play("pickup")
-                elif action == "unequip":
-                    # 장착 해제
-                    item = self.player.equipped.get(value)
-                    if item:
-                        if self.player.inventory.add_item(item):
-                            self.player.equipped[value] = None
-                            self.event_system.add_log(f"'{item}'을(를) 해제했습니다.")
-                            SoundGenerator.play("pickup")
-                        else:
-                            self.event_system.add_log("인벤토리 빈 공간이 부족합니다!")
-            return
+                    elif action == "unequip":
+                        # 장착 해제
+                        item = self.player.equipped.get(value)
+                        if item:
+                            if self.player.inventory.add_item(item):
+                                self.player.equipped[value] = None
+                                self.event_system.add_log(f"'{item}'을(를) 해제했습니다.")
+                                SoundGenerator.play("pickup")
+                            else:
+                                self.event_system.add_log("인벤토리 빈 공간이 부족합니다!")
+                return
 
         if self.crafting_ui.visible:
-            result = self.crafting_ui.handle_event(event, self.player)
-            if result:
-                action, recipe_name = result
-                if action == "craft":
-                    if self.player.crafting.start_craft(recipe_name, self.player.inventory):
-                        self.event_system.add_log(f"'{recipe_name}' 제작을 시작합니다...")
-                        SoundGenerator.play("craft_complete")
-            return
+            # 단축키(I, ESC, C) 입력은 아래쪽 글로벌 단축키 처리로 통과시킴
+            if not (event.type == pygame.KEYDOWN and event.key in (pygame.K_i, pygame.K_ESCAPE, pygame.K_c)):
+                result = self.crafting_ui.handle_event(event, self.player)
+                if result:
+                    action, recipe_name = result
+                    if action == "craft":
+                        if self.player.crafting.start_craft(recipe_name, self.player.inventory):
+                            self.event_system.add_log(f"'{recipe_name}' 제작을 시작합니다...")
+                            SoundGenerator.play("craft_complete")
+                return
 
         if self.dialogue_ui.visible:
             self.dialogue_ui.handle_event(event)

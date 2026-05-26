@@ -74,13 +74,12 @@ class DialogueUI:
                         self.hide()
                         return result
                 
-                # 대화 패널 바깥 영역을 클릭했을 때만 창을 안전하게 닫기
-                if not (px <= mx <= px + panel_w and py <= my <= py + panel_h):
-                    result = "close"
-                    if self.on_select:
-                        self.on_select(result)
-                    self.hide()
-                    return result
+                # 옵션 단추 외의 다른 영역(패널 내부 텍스트 및 외부 포함) 클릭 시 대화 닫기
+                result = "close"
+                if self.on_select:
+                    self.on_select(result)
+                self.hide()
+                return result
 
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:

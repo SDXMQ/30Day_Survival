@@ -10,7 +10,7 @@ from i18n import t
 
 
 class InventoryUI:
-    """인벤토리 화면 (드래그 앤 드롭 지원)"""
+    """인벤토리 화면 (드래그 앤 드롭 및 스크롤 지원)"""
 
     def __init__(self, screen_w, screen_h):
         self.sw = screen_w
@@ -34,6 +34,7 @@ class InventoryUI:
         self.animation_progress = 0
         self.selected_slot = -1
         self.dragging = False
+        self.scroll_offset = 0
 
     def update(self, dt):
         if self.visible and self.animation_progress < 1:
@@ -43,9 +44,24 @@ class InventoryUI:
         if not self.visible:
             return None
 
+        # 마우스 휠 스크롤 처리
+        if event.type == pygame.MOUSEWHEEL:
+            mx, my = pygame.mouse.get_pos()
+            px, py, eq_w, inv_w, panel_h, slot_size, gap, cols = self._get_panel_rects()
+            inv_px = px + eq_w + 10
+            # 마우스 포인터가 인벤토리 영역 위에 있을 때 스크롤 작동
+            if inv_px <= mx <= inv_px + inv_w and py <= my <= py + panel_h:
+                slots = player.inventory.slots
+                total_rows = math.ceil(slots / cols)
+                visible_height = 240
+                max_scroll = max(0, total_rows * (slot_size + gap) + gap - visible_height)
+                self.scroll_offset -= event.y * 25
+                self.scroll_offset = max(0, min(self.scroll_offset, max_scroll))
+            return None
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
-            inv_slot = self._get_slot_at(mx, my)
+            inv_slot = self._get_slot_at(mx, my, player)
             eq_slot = self._get_equip_slot_at(mx, my)
 
             if event.button == 1:  # 좌클릭 - 드래그 시작 또는 사용
@@ -69,7 +85,7 @@ class InventoryUI:
 
         elif event.type == pygame.MOUSEMOTION:
             mx, my = event.pos
-            self.hover_slot = self._get_slot_at(mx, my)
+            self.hover_slot = self._get_slot_at(mx, my, player)
             self.hover_equip = self._get_equip_slot_at(mx, my)
             if self.dragging:
                 self.drag_mouse_pos = (mx, my)
@@ -77,7 +93,7 @@ class InventoryUI:
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1 and self.dragging:
                 mx, my = event.pos
-                inv_slot = self._get_slot_at(mx, my)
+                inv_slot = self._get_slot_at(mx, my, player)
                 eq_slot = self._get_equip_slot_at(mx, my)
                 
                 result = None
@@ -120,14 +136,20 @@ class InventoryUI:
         
         return px, py, eq_w, inv_w, panel_h, slot_size, gap, cols
 
-    def _get_slot_at(self, mx, my):
+    def _get_slot_at(self, mx, my, player):
         px, py, eq_w, inv_w, panel_h, slot_size, gap, cols = self._get_panel_rects()
         inv_px = px + eq_w + 10
+        slots = player.inventory.slots
+        visible_height = 240
+
+        # 클리핑 가시 영역 밖의 호버/클릭 판정 제한
+        if not (py + 40 <= my <= py + 40 + visible_height):
+            return None
         
-        for i in range(24):
+        for i in range(slots):
             row, col = divmod(i, cols)
             sx = inv_px + 10 + col * (slot_size + gap) + gap
-            sy = py + 40 + row * (slot_size + gap) + gap
+            sy = py + 40 + row * (slot_size + gap) + gap - self.scroll_offset
             if sx <= mx <= sx + slot_size and sy <= my <= sy + slot_size:
                 return i
         return None
@@ -205,11 +227,20 @@ class InventoryUI:
                     icon = ItemIconRenderer.get_icon(item_name)
                     surface.blit(icon, (sx + (slot_size - icon.get_width())//2, sy + (slot_size - icon.get_height())//2))
 
-        # 인벤토리 슬롯 그리기
-        for i in range(24):
+        # 인벤토리 슬롯 그리기 및 스크롤 영역 클리핑 처리
+        inv_slots_count = player.inventory.slots
+        total_rows = math.ceil(inv_slots_count / cols)
+        visible_height = 240
+
+        # 클리핑 셋업
+        clip_rect = pygame.Rect(inv_px + 10, py + 40, inv_w - 20, visible_height)
+        old_clip = surface.get_clip()
+        surface.set_clip(clip_rect)
+
+        for i in range(inv_slots_count):
             row, col = divmod(i, cols)
             sx = inv_px + 10 + col * (slot_size + gap) + gap
-            sy = py + 40 + row * (slot_size + gap) + gap
+            sy = py + 40 + row * (slot_size + gap) + gap - self.scroll_offset
 
             is_hover = i == self.hover_slot
             bg_color = (50, 55, 70, 200) if is_hover else (35, 38, 50, 180)
@@ -230,6 +261,23 @@ class InventoryUI:
                     if count > 1:
                         count_surf = font_count.render(str(count), True, Colors.UI_TEXT)
                         surface.blit(count_surf, (sx + slot_size - count_surf.get_width() - 2, sy + slot_size - 14))
+
+        # 클리핑 영역 복원
+        surface.set_clip(old_clip)
+
+        # 세련된 스크롤바 그리기
+        max_scroll = max(0, total_rows * (slot_size + gap) + gap - visible_height)
+        if max_scroll > 0:
+            track_x = inv_px + inv_w - 10
+            track_y = py + 40
+            track_h = visible_height
+            # 트랙 배경
+            pygame.draw.rect(surface, (30, 32, 42, 100), (track_x, track_y, 4, track_h), border_radius=2)
+            
+            # 스크롤바 썸
+            thumb_h = max(20, int(track_h * (visible_height / (total_rows * (slot_size + gap) + gap))))
+            thumb_y = track_y + int((track_h - thumb_h) * (self.scroll_offset / max_scroll))
+            pygame.draw.rect(surface, Colors.UI_ACCENT, (track_x, thumb_y, 4, thumb_h), border_radius=2)
 
         # 툴팁 (마우스 오버 시 아이템 정보)
         hover_item = None

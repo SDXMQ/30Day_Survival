@@ -101,7 +101,7 @@ class Player:
     def update(self, dt, current_world, weather_type=None):
         """플레이어 업데이트 (world 혹은 interior를 받아 다형성 적용)"""
         if not self.alive:
-            return
+            return None
 
         # 이동 처리
         self._handle_movement(dt, current_world)
@@ -133,6 +133,8 @@ class Player:
         # 발자국 타이머
         if self.moving:
             self.footstep_timer += dt
+
+        return result
 
     def _handle_movement(self, dt, world):
         """키 입력 기반 이동"""

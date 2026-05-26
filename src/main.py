@@ -421,7 +421,7 @@ class Game:
                     if action == "craft":
                         if self.player.crafting.start_craft(recipe_name, self.player.inventory):
                             self.event_system.add_log(t("log_crafting_started", recipe_name))
-                            SoundGenerator.play("craft_complete")
+                            SoundGenerator.play("menu_select")
                 return
 
         if self.dialogue_ui.visible:
@@ -705,7 +705,10 @@ class Game:
 
         # 플레이어
         weather = self.weather_system.current_weather if not is_interior and self.weather_system else None
-        self.player.update(dt, current_world, weather)
+        craft_result = self.player.update(dt, current_world, weather)
+        if craft_result:
+            self.event_system.add_log(t("log_craft_success", craft_result))
+            SoundGenerator.play("craft_complete")
 
         # 카메라
         if cam:
@@ -1073,12 +1076,13 @@ class Game:
             req_item, req_count = npc.quest_req
             has = self.player.inventory.count_item(req_item)
             
+            translated_item = t(req_item)
             if has >= req_count:
                 color = (150, 255, 150)
-                text = f"- {req_item} ({has}/{req_count}) [완료 가능]"
+                text = f"- {translated_item} ({has}/{req_count}) [{t('quest_ready')}]"
             else:
                 color = (200, 200, 200)
-                text = f"- {req_item} ({has}/{req_count})"
+                text = f"- {translated_item} ({has}/{req_count})"
                 
             text_surf = font.render(text, True, color)
             surface.blit(text_surf, (start_x, start_y + 18 + i * 16))

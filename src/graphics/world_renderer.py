@@ -404,21 +404,40 @@ class WorldSceneRenderer:
         surface.blit(player_sprite, (psx, psy))
         self.draw_aim_indicator(surface, self.game.player.x, self.game.player.y, cam)
 
-        # 창문 시야 오버레이 렌더링
+        # 창문 시야 오버레이 및 실외 렌더링
         window_vision = getattr(self.game, 'window_vision', None)
         if window_vision:
             win = window_vision["win"]
             wsx, wsy = cam.world_to_screen(win["x"], win["y"])
 
-            # 부채꼴 시야 반투명 오버레이
-            cone_surf = pygame.Surface((self.game.screen_w, self.game.screen_h), pygame.SRCALPHA)
             win_angle = math.atan2(window_vision["dir_y"], window_vision["dir_x"])
             cone_range = window_vision["range"] * TILE_SIZE
             half_fov = math.pi / 6  # 30도
 
-            # 부채꼴 꼭짓점 계산
             cx = wsx + TILE_SIZE // 2
             cy = wsy + TILE_SIZE // 2
+
+            # --- 실외 풍경 실제 렌더링 ---
+            ext_cam = self.game.camera
+            old_x, old_y = ext_cam.x, ext_cam.y
+
+            wx = window_vision["world_x"]
+            wy = window_vision["world_y"]
+            ext_cam.x = wx * TILE_SIZE - cx / ext_cam.zoom
+            ext_cam.y = wy * TILE_SIZE - cy / ext_cam.zoom
+
+            ext_surf = pygame.Surface((self.game.screen_w, self.game.screen_h), pygame.SRCALPHA)
+
+            self.draw_tiles(ext_surf)
+            self.draw_ground_items(ext_surf)
+            self.draw_environment(ext_surf)
+            self.draw_buildings(ext_surf)
+            self.draw_entities(ext_surf)
+
+            ext_cam.x, ext_cam.y = old_x, old_y
+
+            # 부채꼴 마스크 생성
+            mask_surf = pygame.Surface((self.game.screen_w, self.game.screen_h), pygame.SRCALPHA)
             num_points = 12
             points = [(cx, cy)]
             for i in range(num_points + 1):
@@ -428,28 +447,22 @@ class WorldSceneRenderer:
                 points.append((int(px), int(py)))
 
             if len(points) >= 3:
-                pygame.draw.polygon(cone_surf, (120, 200, 255, 35), points)
-                pygame.draw.polygon(cone_surf, (120, 200, 255, 60), points, 2)
-            surface.blit(cone_surf, (0, 0))
+                # 마스크: 부채꼴 영역은 흰색(완전 불투명)
+                pygame.draw.polygon(mask_surf, (255, 255, 255, 255), points)
+                # 실외 서피스에 마스크 적용
+                ext_surf.blit(mask_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                # 최종 화면에 블릿
+                surface.blit(ext_surf, (0, 0))
+                
+                # 푸른빛 오버레이 테두리 (알파 블렌딩을 위해 임시 서피스 사용)
+                overlay_surf = pygame.Surface((self.game.screen_w, self.game.screen_h), pygame.SRCALPHA)
+                pygame.draw.polygon(overlay_surf, (120, 200, 255, 35), points)
+                pygame.draw.polygon(overlay_surf, (120, 200, 255, 60), points, 2)
+                surface.blit(overlay_surf, (0, 0))
 
-            # 시야 내 야외 좀비 실루엿 표시
+            # 좀비 수 표시 (실외 렌더링 위에)
             visible_zombies = window_vision.get("zombies", [])
             if visible_zombies:
-                # 창문 위치 기준으로 외부 좀비 상대 위치를 시야 콘 내에 표시
-                wx = window_vision["world_x"]
-                wy = window_vision["world_y"]
-                for vz in visible_zombies:
-                    # 외부 좌표 -> 창문 기준 오프셋 -> 화면 좌표
-                    rel_x = (vz["x"] - wx) * TILE_SIZE
-                    rel_y = (vz["y"] - wy) * TILE_SIZE
-                    zx = cx + int(rel_x)
-                    zy = cy + int(rel_y)
-                    # 좀비 실루엿 (빨간 점)
-                    z_color = (255, 80, 80) if vz["state"] in ("chase", "attack") else (200, 150, 80)
-                    pygame.draw.circle(surface, z_color, (zx, zy), 4)
-                    pygame.draw.circle(surface, (255, 255, 255, 180), (zx, zy), 4, 1)
-
-                # 좀비 수 표시
                 count_font = FontManager.get(10)
                 count_text = count_font.render(f"외부 좀비: {len(visible_zombies)}", True, (255, 200, 100))
                 surface.blit(count_text, (wsx - 10, wsy - 18))

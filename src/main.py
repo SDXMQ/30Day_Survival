@@ -132,6 +132,8 @@ class Game:
         self.explored_interiors = {}     # 건물_id -> BuildingInterior (delta 저장)
         self.zombie_intrusion_timer = 0  # 야외 좀비 건물 침입 주기 타이머
         self.window_vision = None        # 창문 시야 데이터 (None 또는 dict)
+        self.last_window_angle = None    # 창문의 마지막 유효 시야 각도
+        self.active_window_pos = None    # 현재 주시 중인 창문 위치 (x, y)
 
         # 습격(Raid) 시스템 상태
         self.raid_active = False
@@ -789,10 +791,39 @@ class Game:
                     ratio_y = win["y"] / max(1, self.current_interior.height)
                     world_x = bref.x + ratio_x * bref.width
                     world_y = bref.y + ratio_y * bref.height
+                    # 창문 기본 방향
+                    base_angle = math.atan2(win["dir_y"], win["dir_x"])
+                    
+                    # 현재 바라보는 창문 상태 업데이트 및 각도 초기화
+                    win_pos = (win["x"], win["y"])
+                    if self.active_window_pos != win_pos:
+                        self.active_window_pos = win_pos
+                        self.last_window_angle = base_angle
+
+                    # 마우스 방향으로 시야 각도 계산 (60도 밖으로 나가면 마지막 각도로 고정)
+                    import pygame
+                    mouse_sx, mouse_sy = pygame.mouse.get_pos()
+                    if self.interior_camera:
+                        mouse_wx, mouse_wy = self.interior_camera.screen_to_world(mouse_sx, mouse_sy)
+                        mouse_angle = math.atan2(mouse_wy - win["y"], mouse_wx - win["x"])
+                        
+                        max_diff = math.pi / 3  # 60도
+                        diff = (mouse_angle - base_angle + math.pi) % (2 * math.pi) - math.pi
+                        if abs(diff) <= max_diff:
+                            self.last_window_angle = mouse_angle
+                        
+                        final_angle = self.last_window_angle if self.last_window_angle is not None else base_angle
+                    else:
+                        final_angle = base_angle
+                        
+                    view_dir_x = math.cos(final_angle)
+                    view_dir_y = math.sin(final_angle)
+
                     # 창문 방향으로 8타일 시야
                     vision_range = 8
-                    look_x = world_x + win["dir_x"] * vision_range * 0.5
-                    look_y = world_y + win["dir_y"] * vision_range * 0.5
+                    look_x = world_x + view_dir_x * vision_range * 0.5
+                    look_y = world_y + view_dir_y * vision_range * 0.5
+                    
                     # 시야 범위 내 야외 좀비 조회
                     visible_zombies = []
                     if self.entity_manager:
@@ -802,28 +833,30 @@ class Game:
                             dx = oz.x - world_x
                             dy = oz.y - world_y
                             angle_to = math.atan2(dy, dx)
-                            win_angle = math.atan2(win["dir_y"], win["dir_x"])
-                            diff = abs(angle_to - win_angle)
-                            if diff > math.pi:
-                                diff = 2 * math.pi - diff
-                            if diff <= math.pi / 6:  # 30도 반경 = 60도 부채꼴
+                            z_diff = abs((angle_to - final_angle + math.pi) % (2 * math.pi) - math.pi)
+                            if z_diff <= math.pi / 6:  # 30도 반경 = 60도 부채꼴
                                 visible_zombies.append({"x": oz.x, "y": oz.y, "type": oz.zombie_type, "state": oz.state})
 
                     self.window_vision = {
                         "win": win,
                         "world_x": world_x,
                         "world_y": world_y,
-                        "dir_x": win["dir_x"],
-                        "dir_y": win["dir_y"],
+                        "dir_x": view_dir_x,
+                        "dir_y": view_dir_y,
                         "range": vision_range,
                         "zombies": visible_zombies,
                     }
+                else:
+                    self.active_window_pos = None
+                    self.last_window_angle = None
+            else:
+                self.active_window_pos = None
+                self.last_window_angle = None
         else:
             self.entity_manager.update(dt, self.player, self.world)
             combat_results = self.combat_system.process_zombie_attacks(self.player, self.entity_manager)
             for action, zombie, dmg in combat_results:
                 if action == "player_hit":
-                    from sounds import SoundGenerator
                     from particles import ParticleEmitters
                     SoundGenerator.play("player_hurt")
                     self.camera.shake(5, 0.2)

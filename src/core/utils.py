@@ -33,6 +33,11 @@ def distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
+def distance_sq(x1, y1, x2, y2):
+    """두 점 사이의 거리의 제곱 (루트 연산 방지용)"""
+    return (x2 - x1) ** 2 + (y2 - y1) ** 2
+
+
 def direction_to(x1, y1, x2, y2):
     """(x1,y1)에서 (x2,y2)로의 정규화된 방향 벡터"""
     dx = x2 - x1

@@ -62,9 +62,12 @@ class ParticleSystem:
     def __init__(self):
         self.particles = []
         self.max_particles = 500
-        settings = GameSettings()
-        quality_multipliers = {0: 0, 1: 0.3, 2: 0.7, 3: 1.0}
-        self.quality = quality_multipliers.get(settings.particles_quality, 0.7)
+        self.settings = GameSettings()
+
+    @property
+    def quality(self):
+        quality_multipliers = {0: 0.0, 1: 0.3, 2: 0.7, 3: 1.0}
+        return quality_multipliers.get(self.settings.particles_quality, 0.7)
 
     def update(self, dt):
         self.particles = [p for p in self.particles if p.update(dt)]
@@ -107,7 +110,10 @@ class ParticleSystem:
 
     def emit(self, emitter_func, count=1):
         """파티클 방출"""
-        actual_count = max(1, int(count * self.quality))
+        q = self.quality
+        if q <= 0.0:
+            return
+        actual_count = max(1, int(count * q))
         if len(self.particles) + actual_count > self.max_particles:
             actual_count = max(0, self.max_particles - len(self.particles))
         for _ in range(actual_count):

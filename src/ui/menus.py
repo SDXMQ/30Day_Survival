@@ -356,6 +356,13 @@ class SettingsUI:
             if px + 200 <= mx <= px + 350 and fs_y <= my <= fs_y + 30:
                 self.game_settings.fullscreen = not self.game_settings.fullscreen
 
+            # 파티클 품질 변경
+            pq_y = py + 140
+            if px + 200 <= mx <= px + 220 and pq_y <= my <= pq_y + 25:
+                self.game_settings.particles_quality = (self.game_settings.particles_quality - 1) % 4
+            elif px + 370 <= mx <= px + 390 and pq_y <= my <= pq_y + 25:
+                self.game_settings.particles_quality = (self.game_settings.particles_quality + 1) % 4
+
             # 언어 변경
             lang_y = py + 180
             if px + 200 <= mx <= px + 220 and lang_y <= my <= lang_y + 25:
@@ -427,10 +434,17 @@ class SettingsUI:
         pq_y = py + 140
         pq_label = font.render(t("particle_quality"), True, Colors.UI_TEXT)
         surface.blit(pq_label, (px + 20, pq_y))
+
+        arrow_l_pq = font.render("◀", True, Colors.UI_ACCENT)
+        surface.blit(arrow_l_pq, (px + 200, pq_y))
+
         pq_names = [t("particle_none"), t("particle_low"), t("particle_normal"), t("particle_high")]
         pq = self.game_settings.particles_quality
         pq_surf = font.render(pq_names[pq], True, Colors.UI_TEXT)
-        surface.blit(pq_surf, (px + 200, pq_y))
+        surface.blit(pq_surf, (px + 260, pq_y))
+
+        arrow_r_pq = font.render("▶", True, Colors.UI_ACCENT)
+        surface.blit(arrow_r_pq, (px + 370, pq_y))
 
         # 언어
         lang_y = py + 180

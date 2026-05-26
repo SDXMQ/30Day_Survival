@@ -73,6 +73,7 @@ class Player:
         self.cause_of_death = ""
         self.exhausted = False  # 탈진 상태 (스태미나 0 도달 시)
         self.footstep_timer = 0
+        self.stat_timer = 0.0  # 스탯 업데이트 주기 제한용 타이머
 
         # 퀘스트/진행 추적
         self.discovered_biomes = set()
@@ -116,10 +117,12 @@ class Player:
         if self.invincible_timer > 0:
             self.invincible_timer -= dt
 
-        # 스탯 감소 (시간 경과)
-        # 주의: current_world가 BuildingInterior일 경우를 대비해 속성 접근 안전 처리
-        world_settings = getattr(current_world, 'world_settings', {})
-        self._update_stats(dt, world_settings, weather_type)
+        # 스탯 감소 (시간 경과 - 0.5초 주기로 갱신하여 연산 부하 축소)
+        self.stat_timer += dt
+        if self.stat_timer >= 0.5:
+            world_settings = getattr(current_world, 'world_settings', {})
+            self._update_stats(self.stat_timer, world_settings, weather_type)
+            self.stat_timer = 0.0
 
         # 크래프팅 진행
         # 크래프팅 시 좌표는 현재 좌표를 넘김

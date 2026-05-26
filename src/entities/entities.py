@@ -4,7 +4,7 @@ entities.py - 좀비, NPC, 동물 엔티티 시스템
 import math
 import random
 from settings import TILE_SIZE, CHUNK_SIZE, DIFFICULTY_PRESETS
-from utils import distance, direction_to, clamp
+from utils import distance, direction_to, clamp, distance_sq
 
 
 # ============================================================
@@ -106,6 +106,7 @@ class Zombie:
         self.hurt_timer = 0
         self.death_timer = 0
         self.aggro_alert = 0.0  # 총성 어그로 느낌표 표시 잔여 시간
+        self.ai_timer = random.uniform(0, 0.15)  # AI 업데이트 주기 관리용 타이머
 
         self.active = True
 
@@ -133,19 +134,26 @@ class Zombie:
                 self.state = ZombieState.CHASE
             return
 
-        # 플레이어와의 거리
-        dist = distance(self.x, self.y, player_x, player_y)
+        # AI 의사결정 주기 조절 (0.15초 간격 또는 강제 갱신 상태)
+        self.ai_timer += dt
+        if self.ai_timer >= 0.15 or self.state == ZombieState.ATTACK:
+            self.ai_timer = 0
+            
+            # 플레이어와의 제곱 거리
+            dist_sq = distance_sq(self.x, self.y, player_x, player_y)
 
-        # 은신 시 감지 범위 50% 감소
-        effective_detection = self.detection_range * 0.5 if player_crouching else self.detection_range
+            # 은신 시 감지 범위 50% 감소
+            effective_detection = self.detection_range * 0.5 if player_crouching else self.detection_range
+            effective_detection_sq = effective_detection ** 2
+            attack_range_sq = self.attack_range ** 2
 
-        # 상태 전이
-        if dist <= self.attack_range:
-            self.state = ZombieState.ATTACK
-        elif dist <= effective_detection:
-            self.state = ZombieState.CHASE
-        elif self.state == ZombieState.CHASE and dist > effective_detection * 1.5:
-            self.state = ZombieState.WANDER
+            # 상태 전이
+            if dist_sq <= attack_range_sq:
+                self.state = ZombieState.ATTACK
+            elif dist_sq <= effective_detection_sq:
+                self.state = ZombieState.CHASE
+            elif self.state == ZombieState.CHASE and dist_sq > effective_detection_sq * 2.25: # (1.5)^2 = 2.25
+                self.state = ZombieState.WANDER
 
         # 상태별 행동
         if self.state == ZombieState.IDLE:
@@ -167,7 +175,7 @@ class Zombie:
             if world.is_walkable(self.x, new_y):
                 self.y = new_y
 
-            if distance(self.x, self.y, self.wander_target_x, self.wander_target_y) < 0.5:
+            if distance_sq(self.x, self.y, self.wander_target_x, self.wander_target_y) < 0.25: # 0.5^2 = 0.25
                 self.state = ZombieState.IDLE
                 self.idle_timer = random.uniform(1, 4)
 

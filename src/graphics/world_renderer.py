@@ -15,13 +15,32 @@ class WorldSceneRenderer:
     def draw_tiles(self, surface):
         x1, y1, x2, y2 = self.game.camera.get_visible_area()
 
-        for ty in range(y1, y2 + 1):
-            for tx in range(x1, x2 + 1):
-                tile_type = self.game.world.get_tile(tx, ty)
-                variant = (tx * 7 + ty * 13) % 4
-                tile_surf = TileRenderer.get_tile(tile_type, variant)
-                sx, sy_pos = self.game.camera.world_to_screen(tx, ty)
-                surface.blit(tile_surf, (sx, sy_pos))
+        cx1 = x1 // CHUNK_SIZE
+        cx2 = x2 // CHUNK_SIZE
+        cy1 = y1 // CHUNK_SIZE
+        cy2 = y2 // CHUNK_SIZE
+
+        for cy in range(cy1, cy2 + 1):
+            for cx in range(cx1, cx2 + 1):
+                chunk = self.game.world.get_chunk(cx, cy)
+
+                if chunk.surface is None or chunk.dirty:
+                    chunk_px_size = CHUNK_SIZE * TILE_SIZE
+                    chunk.surface = pygame.Surface((chunk_px_size, chunk_px_size)).convert()
+
+                    for ly in range(CHUNK_SIZE):
+                        for lx in range(CHUNK_SIZE):
+                            wx = cx * CHUNK_SIZE + lx
+                            wy = cy * CHUNK_SIZE + ly
+                            tile_type = chunk.get_tile(lx, ly)
+                            variant = (wx * 7 + wy * 13) % 4
+                            tile_surf = TileRenderer.get_tile(tile_type, variant)
+                            chunk.surface.blit(tile_surf, (lx * TILE_SIZE, ly * TILE_SIZE))
+
+                    chunk.dirty = False
+
+                sx, sy_pos = self.game.camera.world_to_screen(cx * CHUNK_SIZE, cy * CHUNK_SIZE)
+                surface.blit(chunk.surface, (sx, sy_pos))
 
     def draw_ground_items(self, surface):
         x1, y1, x2, y2 = self.game.camera.get_visible_area()

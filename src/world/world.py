@@ -108,6 +108,10 @@ class Chunk:
         self.buildings = []
         self.items_on_ground = []  # (item_name, x, y)
         self.generated = False
+        
+        # 캐싱을 위한 플래그 및 서피스 참조
+        self.dirty = True
+        self.surface = None
 
     @property
     def world_x(self):
@@ -126,6 +130,7 @@ class Chunk:
         if 0 <= local_x < CHUNK_SIZE and 0 <= local_y < CHUNK_SIZE:
             self.tiles[local_y][local_x] = tile_type
             self.variants[local_y][local_x] = variant
+            self.dirty = True
 
     def to_dict(self):
         return {

@@ -615,6 +615,23 @@ class ItemIconRenderer:
             "고급 치료킷": cls._draw_adv_medkit,
             "개조 손전등": cls._draw_mod_flashlight,
             "장거리 무전기": cls._draw_radio,
+            "마른 빵": cls._draw_bread,
+            "에너지바": cls._draw_energy_bar,
+            "고기 구이": cls._draw_cooked_meat,
+            "전투 식량": cls._draw_mre,
+            "에너지 드링크": cls._draw_energy_drink,
+            "탄산음료": cls._draw_soda,
+            "커피": cls._draw_coffee,
+            "붕대": cls._draw_bandage,
+            "레버액션 소총": cls._draw_rifle,
+            "가방": cls._draw_backpack,
+            "고철": cls._draw_scrap,
+            "군사 문서": cls._draw_document,
+            "사진": cls._draw_photo,
+            "기계 부품": cls._draw_mech_part,
+            "농작물": cls._draw_crop,
+            "횃불": cls._draw_torch,
+            "함정": cls._draw_trap,
         }
 
         renderer = renderers.get(item_id)
@@ -786,6 +803,117 @@ class ItemIconRenderer:
         pygame.draw.line(s, (200, 200, 60), (cx + 4, cy - 5), (cx + 4, cy - 12), 2)
         pygame.draw.circle(s, (255, 60, 60), (cx - 3, cy - 2), 2)
         pygame.draw.rect(s, (30, 90, 30), (cx - 5, cy + 2, 10, 3), border_radius=1)
+
+    @staticmethod
+    def _draw_bread(s, cx, cy, sz):
+        pygame.draw.rect(s, (190, 140, 90), (cx - 8, cy - 5, 16, 10), border_radius=3)
+        pygame.draw.line(s, (140, 90, 45), (cx - 4, cy - 3), (cx - 2, cy + 3), 1)
+        pygame.draw.line(s, (140, 90, 45), (cx, cy - 3), (cx + 2, cy + 3), 1)
+        pygame.draw.line(s, (140, 90, 45), (cx + 4, cy - 3), (cx + 6, cy + 3), 1)
+
+    @staticmethod
+    def _draw_energy_bar(s, cx, cy, sz):
+        pygame.draw.rect(s, (220, 70, 50), (cx - 8, cy - 4, 16, 8), border_radius=1)
+        pygame.draw.rect(s, (80, 50, 30), (cx - 8, cy - 2, 4, 4))
+        pygame.draw.line(s, (240, 200, 50), (cx + 1, cy - 4), (cx + 1, cy + 3), 1)
+
+    @staticmethod
+    def _draw_cooked_meat(s, cx, cy, sz):
+        pygame.draw.rect(s, (120, 70, 45), (cx - 7, cy - 6, 14, 12), border_radius=4)
+        pygame.draw.line(s, (70, 40, 20), (cx - 4, cy - 3), (cx - 1, cy + 3), 2)
+        pygame.draw.line(s, (70, 40, 20), (cx + 1, cy - 3), (cx + 4, cy + 3), 2)
+
+    @staticmethod
+    def _draw_mre(s, cx, cy, sz):
+        pygame.draw.rect(s, (80, 90, 70), (cx - 8, cy - 7, 16, 14), border_radius=1)
+        pygame.draw.rect(s, (200, 180, 100), (cx - 5, cy - 3, 10, 6))
+
+    @staticmethod
+    def _draw_energy_drink(s, cx, cy, sz):
+        pygame.draw.rect(s, (30, 30, 35), (cx - 5, cy - 8, 10, 16), border_radius=2)
+        pygame.draw.rect(s, (50, 220, 100), (cx - 5, cy - 2, 10, 5))
+        pygame.draw.rect(s, (180, 180, 185), (cx - 3, cy - 10, 6, 2), border_radius=1)
+
+    @staticmethod
+    def _draw_soda(s, cx, cy, sz):
+        pygame.draw.rect(s, (220, 50, 50), (cx - 5, cy - 8, 10, 16), border_radius=2)
+        pygame.draw.line(s, (245, 245, 250), (cx - 4, cy - 1), (cx + 3, cy + 2), 2)
+        pygame.draw.rect(s, (180, 180, 185), (cx - 3, cy - 10, 6, 2), border_radius=1)
+
+    @staticmethod
+    def _draw_coffee(s, cx, cy, sz):
+        pygame.draw.rect(s, (210, 180, 140), (cx - 6, cy - 7, 12, 14), border_radius=1)
+        pygame.draw.circle(s, (100, 70, 50), (cx, cy), 3)
+
+    @staticmethod
+    def _draw_bandage(s, cx, cy, sz):
+        pygame.draw.rect(s, (240, 240, 235), (cx - 7, cy - 5, 14, 10), border_radius=2)
+        pygame.draw.line(s, (180, 180, 185), (cx - 1, cy - 5), (cx - 1, cy + 4), 1)
+        pygame.draw.line(s, (200, 200, 195), (cx - 4, cy - 1), (cx + 4, cy - 1), 1)
+
+    @staticmethod
+    def _draw_rifle(s, cx, cy, sz):
+        pygame.draw.line(s, (100, 100, 105), (cx - 11, cy + 9), (cx + 11, cy - 9), 2)
+        pygame.draw.polygon(s, (120, 80, 45), [
+            (cx - 11, cy + 9), (cx - 6, cy + 4), (cx - 4, cy + 6), (cx - 8, cy + 11)
+        ])
+        pygame.draw.rect(s, (60, 60, 65), (cx - 2, cy - 3, 4, 2))
+
+    @staticmethod
+    def _draw_backpack(s, cx, cy, sz):
+        pygame.draw.rect(s, (70, 85, 60), (cx - 7, cy - 8, 14, 16), border_radius=3)
+        pygame.draw.rect(s, (55, 70, 45), (cx - 5, cy + 1, 10, 6), border_radius=1)
+        pygame.draw.line(s, (120, 95, 60), (cx - 4, cy - 6), (cx - 4, cy + 6), 1)
+        pygame.draw.line(s, (120, 95, 60), (cx + 3, cy - 6), (cx + 3, cy + 6), 1)
+
+    @staticmethod
+    def _draw_scrap(s, cx, cy, sz):
+        pygame.draw.polygon(s, (130, 135, 140), [
+            (cx - 6, cy - 3), (cx + 4, cy - 6), (cx + 8, cy + 2), (cx, cy + 8), (cx - 7, cy + 4)
+        ])
+        pygame.draw.line(s, (160, 90, 50), (cx - 3, cy + 2), (cx + 2, cy - 1), 1)
+
+    @staticmethod
+    def _draw_document(s, cx, cy, sz):
+        pygame.draw.rect(s, (210, 185, 130), (cx - 7, cy - 9, 14, 18), border_radius=1)
+        pygame.draw.circle(s, (200, 50, 50), (cx + 1, cy - 3), 2)
+        pygame.draw.line(s, (80, 80, 85), (cx - 4, cy + 3), (cx + 4, cy + 3), 1)
+        pygame.draw.line(s, (80, 80, 85), (cx - 4, cy + 6), (cx + 2, cy + 6), 1)
+
+    @staticmethod
+    def _draw_photo(s, cx, cy, sz):
+        pygame.draw.rect(s, (245, 245, 240), (cx - 7, cy - 8, 14, 16), border_radius=1)
+        pygame.draw.rect(s, (60, 130, 180), (cx - 5, cy - 6, 10, 10))
+        pygame.draw.circle(s, (80, 150, 70), (cx - 2, cy + 4), 6)
+
+    @staticmethod
+    def _draw_mech_part(s, cx, cy, sz):
+        pygame.draw.circle(s, (150, 155, 160), (cx, cy), 8)
+        pygame.draw.circle(s, (0, 0, 0), (cx, cy), 3)
+        for dx, dy in [(-9, 0), (9, 0), (0, -9), (0, 9), (-6, -6), (6, 6), (6, -6), (-6, 6)]:
+            pygame.draw.rect(s, (120, 125, 130), (cx + dx - 1, cy + dy - 1, 2, 2))
+
+    @staticmethod
+    def _draw_crop(s, cx, cy, sz):
+        pygame.draw.polygon(s, (240, 110, 30), [
+            (cx - 3, cy - 4), (cx + 3, cy - 4), (cx, cy + 8)
+        ])
+        pygame.draw.line(s, (60, 160, 50), (cx, cy - 4), (cx - 3, cy - 9), 2)
+        pygame.draw.line(s, (60, 160, 50), (cx, cy - 4), (cx + 3, cy - 9), 2)
+
+    @staticmethod
+    def _draw_torch(s, cx, cy, sz):
+        pygame.draw.line(s, (110, 75, 45), (cx - 4, cy + 8), (cx + 3, cy - 3), 3)
+        pygame.draw.circle(s, (180, 165, 145), (cx + 2, cy - 2), 4)
+        pygame.draw.circle(s, (240, 100, 30), (cx + 3, cy - 5), 4)
+        pygame.draw.circle(s, (255, 200, 50), (cx + 4, cy - 6), 2)
+
+    @staticmethod
+    def _draw_trap(s, cx, cy, sz):
+        pygame.draw.circle(s, (90, 90, 95), (cx, cy), 9, 2)
+        pygame.draw.circle(s, (120, 120, 125), (cx, cy), 4)
+        pygame.draw.line(s, (140, 140, 145), (cx - 7, cy - 5), (cx - 4, cy), 1)
+        pygame.draw.line(s, (140, 140, 145), (cx + 4, cy), (cx + 7, cy - 5), 1)
 
 
 # ============================================================

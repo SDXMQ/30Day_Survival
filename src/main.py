@@ -579,17 +579,38 @@ class Game:
 
     def _exit_building(self):
         """건물에서 나가기"""
-        # 살아있는 좀비만 건물 내부 상태에 동기화 (Bug②: hp와 type도 저장)
+        b = self.interior_building_ref
+        followed_zombies = []
+        remaining_interior_zombies = []
+
+        for z in self.interior_zombies:
+            if not z.is_dead and z.active:
+                if z.state in (ZombieState.CHASE, ZombieState.ATTACK) and b:
+                    followed_zombies.append(z)
+                else:
+                    remaining_interior_zombies.append(z)
+
+        # 살아있는 좀비만 건물 내부 상태에 동기화
         if self.current_interior is not None:
             self.current_interior.zombies = [
                 {"x": z.x, "y": z.y, "hp": z.hp, "type": z.zombie_type}
-                for z in self.interior_zombies
-                if not z.is_dead and z.active
+                for z in remaining_interior_zombies
             ]
         self.player.exit_interior()
         self.current_interior = None
         self.interior_building_ref = None
         self.interior_zombies = []
+
+        # 야외에 따라 나온 좀비 추가
+        if b and self.entity_manager and followed_zombies:
+            for fz in followed_zombies:
+                spawn_x = float(b.door_x) + random.uniform(-0.5, 0.5)
+                spawn_y = float(b.door_y) + 1.2
+                oz = Zombie(spawn_x, spawn_y, fz.zombie_type, self.difficulty)
+                oz.hp = fz.hp
+                oz.state = ZombieState.CHASE
+                self.entity_manager.zombies.append(oz)
+            self.event_system.add_log(t("zombie_followed_outside"))
 
         SoundGenerator.play("door_open")
         self.event_system.add_log(t("exiting_building"))

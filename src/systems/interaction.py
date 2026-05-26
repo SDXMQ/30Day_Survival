@@ -20,13 +20,20 @@ class InteractionHandler:
 
         # 바닥 아이템 줍기
         ground_items = self.game.world.get_ground_items_near(px, py, 1.5)
-        for (item_name, ix, iy), chunk in ground_items:
-            if self.game.player.inventory.add_item(item_name):
-                chunk.items_on_ground.remove((item_name, ix, iy))
-                self.game.event_system.add_log(t("acquired_item", item_name))
-                SoundGenerator.play("pickup")
-                self.game.game_particles.emit(
-                    lambda: ParticleEmitters.pickup_sparkle(px * TILE_SIZE, py * TILE_SIZE), 5)
+        if ground_items:
+            any_picked = False
+            for (item_name, ix, iy), chunk in ground_items:
+                if self.game.player.inventory.add_item(item_name):
+                    chunk.items_on_ground.remove((item_name, ix, iy))
+                    self.game.event_system.add_log(t("acquired_item", item_name))
+                    SoundGenerator.play("pickup")
+                    self.game.game_particles.emit(
+                        lambda: ParticleEmitters.pickup_sparkle(px * TILE_SIZE, py * TILE_SIZE), 5)
+                    any_picked = True
+                    return
+            if not any_picked:
+                self.game.event_system.add_log(t("log_inventory_full"))
+                SoundGenerator.play("error")
                 return
 
         # NPC 대화
@@ -149,14 +156,20 @@ class InteractionHandler:
         # 바닥 아이템 줍기
         ground_items = self.game.current_interior.get_ground_items_near(ix, iy, 1.5)
         if ground_items:
-            item_tuple = ground_items[0]
-            item_name = item_tuple[0]
-            if self.game.player.inventory.add_item(item_name):
-                self.game.current_interior.items_on_ground.remove(item_tuple)
-                self.game.event_system.add_log(t("acquired_item", item_name))
-                SoundGenerator.play("pickup")
-                self.game.game_particles.emit(
-                    lambda: ParticleEmitters.pickup_sparkle(ix * TILE_SIZE, iy * TILE_SIZE), 5)
+            any_picked = False
+            for item_tuple in ground_items:
+                item_name = item_tuple[0]
+                if self.game.player.inventory.add_item(item_name):
+                    self.game.current_interior.items_on_ground.remove(item_tuple)
+                    self.game.event_system.add_log(t("acquired_item", item_name))
+                    SoundGenerator.play("pickup")
+                    self.game.game_particles.emit(
+                        lambda: ParticleEmitters.pickup_sparkle(ix * TILE_SIZE, iy * TILE_SIZE), 5)
+                    any_picked = True
+                    return
+            if not any_picked:
+                self.game.event_system.add_log(t("log_inventory_full"))
+                SoundGenerator.play("error")
                 return
 
         # 출구 확인

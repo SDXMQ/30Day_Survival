@@ -130,6 +130,8 @@ class Game:
         self.interior_building_ref = None # 외부 건물 참조
         self.interior_zombies = []       # 내부 은신형 좀비
         self.explored_interiors = {}     # 건물_id -> BuildingInterior (delta 저장)
+        self.zombie_intrusion_timer = 0  # 야외 좀비 건물 침입 주기 타이머
+        self.window_vision = None        # 창문 시야 데이터 (None 또는 dict)
 
         # 습격(Raid) 시스템 상태
         self.raid_active = False
@@ -530,7 +532,7 @@ class Game:
         self.interior_camera = Camera()
         self.interior_camera.resize(self.screen_w, self.screen_h)
 
-        # 내부 좀비 (Bug②: type과 hp를 복원)
+        # 내부 좀비 (type과 hp를 복원)
         self.interior_zombies = []
         for zdata in self.current_interior.zombies:
             z_type = zdata.get("type", "normal")
@@ -540,6 +542,28 @@ class Game:
             if "hp" in zdata:
                 z.hp = zdata["hp"]
             self.interior_zombies.append(z)
+
+        # 야외 chase 상태 좀비가 건물 안으로 따라옴
+        MAX_INTERIOR_ZOMBIES = 8
+        if self.entity_manager:
+            door_x, door_y = building.door_x, building.door_y
+            nearby_outdoor = self.entity_manager.get_nearby_zombies(door_x, door_y, 8)
+            for oz in nearby_outdoor:
+                if len(self.interior_zombies) >= MAX_INTERIOR_ZOMBIES:
+                    break
+                if oz.state in (ZombieState.CHASE, ZombieState.ATTACK):
+                    # 내부 문 근처에 스폰
+                    ix = float(self.current_interior.door_pos[0])
+                    iy = float(self.current_interior.door_pos[1] - 2)
+                    iz = Zombie(ix, iy, oz.zombie_type, self.difficulty)
+                    iz.hp = oz.hp
+                    iz.state = ZombieState.CHASE
+                    self.interior_zombies.append(iz)
+                    oz.active = False  # 야외에서 제거
+            if len(self.interior_zombies) > len(self.current_interior.zombies):
+                self.event_system.add_log(t("zombie_followed"))
+
+        self.zombie_intrusion_timer = 0
 
         if not building.explored:
             building.explored = True
@@ -728,6 +752,72 @@ class Game:
                             self.event_system.add_log(t("log_stealth_zombie_damage", int(actual)))
                             if self.camera: self.camera.shake(3, 0.2)
                             self.interior_camera.shake(3, 0.2)
+
+            # 야외 좀비 주기적 건물 침입 (3초 주기)
+            MAX_INTERIOR_ZOMBIES = 8
+            self.zombie_intrusion_timer += dt
+            if self.zombie_intrusion_timer >= 3.0 and self.interior_building_ref and self.entity_manager:
+                self.zombie_intrusion_timer = 0
+                bref = self.interior_building_ref
+                door_x, door_y = bref.door_x, bref.door_y
+                nearby = self.entity_manager.get_nearby_zombies(door_x, door_y, 5)
+                for oz in nearby:
+                    if len(self.interior_zombies) >= MAX_INTERIOR_ZOMBIES:
+                        break
+                    if oz.state in (ZombieState.CHASE, ZombieState.ATTACK):
+                        ix = float(self.current_interior.door_pos[0])
+                        iy = float(self.current_interior.door_pos[1] - 2)
+                        iz = Zombie(ix, iy, oz.zombie_type, self.difficulty)
+                        iz.hp = oz.hp
+                        iz.state = ZombieState.CHASE
+                        self.interior_zombies.append(iz)
+                        oz.active = False
+                        self.event_system.add_log(t("zombie_intrusion"))
+                        SoundGenerator.play("zombie_die")  # 문 두드리는 효과음
+                        if self.interior_camera:
+                            self.interior_camera.shake(5, 0.3)
+
+            # 창문 시야 계산
+            self.window_vision = None
+            if self.current_interior and self.interior_building_ref:
+                win = self.current_interior.get_nearby_window(self.player.x, self.player.y, 1.5)
+                if win:
+                    bref = self.interior_building_ref
+                    # 창문 위치를 외부 월드 좌표로 변환
+                    # 내부 좌표 비율 계산: 내부 타일 / 내부 전체 크기 * 외부 크기
+                    ratio_x = win["x"] / max(1, self.current_interior.width)
+                    ratio_y = win["y"] / max(1, self.current_interior.height)
+                    world_x = bref.x + ratio_x * bref.width
+                    world_y = bref.y + ratio_y * bref.height
+                    # 창문 방향으로 8타일 시야
+                    vision_range = 8
+                    look_x = world_x + win["dir_x"] * vision_range * 0.5
+                    look_y = world_y + win["dir_y"] * vision_range * 0.5
+                    # 시야 범위 내 야외 좀비 조회
+                    visible_zombies = []
+                    if self.entity_manager:
+                        outdoor_z = self.entity_manager.get_nearby_zombies(look_x, look_y, vision_range)
+                        for oz in outdoor_z:
+                            # 부채꼴 60도 필터
+                            dx = oz.x - world_x
+                            dy = oz.y - world_y
+                            angle_to = math.atan2(dy, dx)
+                            win_angle = math.atan2(win["dir_y"], win["dir_x"])
+                            diff = abs(angle_to - win_angle)
+                            if diff > math.pi:
+                                diff = 2 * math.pi - diff
+                            if diff <= math.pi / 6:  # 30도 반경 = 60도 부채꼴
+                                visible_zombies.append({"x": oz.x, "y": oz.y, "type": oz.zombie_type, "state": oz.state})
+
+                    self.window_vision = {
+                        "win": win,
+                        "world_x": world_x,
+                        "world_y": world_y,
+                        "dir_x": win["dir_x"],
+                        "dir_y": win["dir_y"],
+                        "range": vision_range,
+                        "zombies": visible_zombies,
+                    }
         else:
             self.entity_manager.update(dt, self.player, self.world)
             combat_results = self.combat_system.process_zombie_attacks(self.player, self.entity_manager)

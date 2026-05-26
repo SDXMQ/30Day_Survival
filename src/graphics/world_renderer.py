@@ -325,6 +325,17 @@ class WorldSceneRenderer:
                 elif tile == "furniture":
                     pygame.draw.rect(surface, Colors.FLOOR_WOOD,
                                     (sx, sy, TILE_SIZE, TILE_SIZE))
+                elif tile == "window":
+                    # 창문 타일: 벽 배경 + 반투명 파란 유리 + 십자 격자
+                    pygame.draw.rect(surface, (55, 50, 60),
+                                    (sx, sy, TILE_SIZE, TILE_SIZE))
+                    win_surf = pygame.Surface((TILE_SIZE - 4, TILE_SIZE - 4), pygame.SRCALPHA)
+                    win_surf.fill((120, 180, 220, 100))
+                    surface.blit(win_surf, (sx + 2, sy + 2))
+                    # 십자 격자
+                    pygame.draw.line(surface, (80, 75, 85), (sx + TILE_SIZE // 2, sy + 2), (sx + TILE_SIZE // 2, sy + TILE_SIZE - 2), 1)
+                    pygame.draw.line(surface, (80, 75, 85), (sx + 2, sy + TILE_SIZE // 2), (sx + TILE_SIZE - 2, sy + TILE_SIZE // 2), 1)
+                    pygame.draw.rect(surface, (90, 85, 95), (sx, sy, TILE_SIZE, TILE_SIZE), 1)
 
         # 가구 그리기
         for furn in interior.furniture:
@@ -392,6 +403,56 @@ class WorldSceneRenderer:
         )
         surface.blit(player_sprite, (psx, psy))
         self.draw_aim_indicator(surface, self.game.player.x, self.game.player.y, cam)
+
+        # 창문 시야 오버레이 렌더링
+        window_vision = getattr(self.game, 'window_vision', None)
+        if window_vision:
+            win = window_vision["win"]
+            wsx, wsy = cam.world_to_screen(win["x"], win["y"])
+
+            # 부채꼴 시야 반투명 오버레이
+            cone_surf = pygame.Surface((self.game.screen_w, self.game.screen_h), pygame.SRCALPHA)
+            win_angle = math.atan2(window_vision["dir_y"], window_vision["dir_x"])
+            cone_range = window_vision["range"] * TILE_SIZE
+            half_fov = math.pi / 6  # 30도
+
+            # 부채꼴 꼭짓점 계산
+            cx = wsx + TILE_SIZE // 2
+            cy = wsy + TILE_SIZE // 2
+            num_points = 12
+            points = [(cx, cy)]
+            for i in range(num_points + 1):
+                a = win_angle - half_fov + (2 * half_fov * i / num_points)
+                px = cx + math.cos(a) * cone_range
+                py = cy + math.sin(a) * cone_range
+                points.append((int(px), int(py)))
+
+            if len(points) >= 3:
+                pygame.draw.polygon(cone_surf, (120, 200, 255, 35), points)
+                pygame.draw.polygon(cone_surf, (120, 200, 255, 60), points, 2)
+            surface.blit(cone_surf, (0, 0))
+
+            # 시야 내 야외 좀비 실루엿 표시
+            visible_zombies = window_vision.get("zombies", [])
+            if visible_zombies:
+                # 창문 위치 기준으로 외부 좀비 상대 위치를 시야 콘 내에 표시
+                wx = window_vision["world_x"]
+                wy = window_vision["world_y"]
+                for vz in visible_zombies:
+                    # 외부 좌표 -> 창문 기준 오프셋 -> 화면 좌표
+                    rel_x = (vz["x"] - wx) * TILE_SIZE
+                    rel_y = (vz["y"] - wy) * TILE_SIZE
+                    zx = cx + int(rel_x)
+                    zy = cy + int(rel_y)
+                    # 좀비 실루엿 (빨간 점)
+                    z_color = (255, 80, 80) if vz["state"] in ("chase", "attack") else (200, 150, 80)
+                    pygame.draw.circle(surface, z_color, (zx, zy), 4)
+                    pygame.draw.circle(surface, (255, 255, 255, 180), (zx, zy), 4, 1)
+
+                # 좀비 수 표시
+                count_font = FontManager.get(10)
+                count_text = count_font.render(f"외부 좀비: {len(visible_zombies)}", True, (255, 200, 100))
+                surface.blit(count_text, (wsx - 10, wsy - 18))
 
         # 상호작용 힌트 (건물 내부용)
         ix, iy = self.game.player.x, self.game.player.y

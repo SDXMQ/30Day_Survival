@@ -78,6 +78,8 @@ STRINGS = {
         "searched_already": "이미 탐색한 가구입니다.",
         "found_nothing": "아무것도 발견하지 못했습니다.",
         "found_items": "발견: ",
+        "zombie_intrusion": "좀비가 건물 안으로 침입했습니다!",
+        "zombie_followed": "좀비가 따라 들어왔습니다!",
 
         # 일시정지
         "paused": "일시정지",
@@ -390,6 +392,8 @@ STRINGS = {
         "searched_already": "Already searched.",
         "found_nothing": "Found nothing.",
         "found_items": "Found: ",
+        "zombie_intrusion": "A zombie has broken into the building!",
+        "zombie_followed": "A zombie followed you inside!",
 
         # Pause
         "paused": "Paused",

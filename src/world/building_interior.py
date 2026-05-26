@@ -276,10 +276,11 @@ class BuildingInterior:
 
         self.rooms = []
         self.furniture = []
-        self.tiles = []    # 2D 타일맵 (벽/바닥/문)
+        self.tiles = []    # 2D 타일맵 (벽/바닥/문/window)
         self.zombies = []  # 내부 좀비 위치
         self.items_on_ground = []  # 내부 바닥 아이템 [(item_name, x, y)]
         self.door_pos = (self.width // 2, self.height - 1)  # 출입구
+        self.windows = []  # 창문 리스트: [{"x", "y", "dir_x", "dir_y"}]
 
         self._generate(seed)
 
@@ -357,6 +358,29 @@ class BuildingInterior:
             self.rooms.append(room)
             room_x += rw
 
+        # 창문 배치 (상단/좌측/우측 외벽에 1~3개)
+        self.windows = []
+        wall_candidates = []
+        # 상단 벽 (y=0), 방향: 위(0, -1)
+        for wx in range(2, self.width - 2):
+            if self.tiles[0][wx] == "wall":
+                wall_candidates.append((wx, 0, 0, -1))
+        # 좌측 벽 (x=0), 방향: 왼쪽(-1, 0)
+        for wy in range(2, self.height - 2):
+            if self.tiles[wy][0] == "wall":
+                wall_candidates.append((0, wy, -1, 0))
+        # 우측 벽 (x=width-1), 방향: 오른쪽(1, 0)
+        for wy in range(2, self.height - 2):
+            if self.tiles[wy][self.width - 1] == "wall":
+                wall_candidates.append((self.width - 1, wy, 1, 0))
+
+        num_windows = min(len(wall_candidates), rng.randint(1, 3))
+        if wall_candidates:
+            chosen = rng.sample(wall_candidates, num_windows)
+            for wx, wy, dx, dy in chosen:
+                self.tiles[wy][wx] = "window"
+                self.windows.append({"x": wx, "y": wy, "dir_x": dx, "dir_y": dy})
+
         # 은신형 좀비 스폰
         zombie_chance = layout.get("default_zombie_chance", 0.2)
         for _ in range(rng.randint(0, 3)):
@@ -373,7 +397,18 @@ class BuildingInterior:
 
     def is_walkable(self, x, y):
         tile = self.get_tile(int(x), int(y))
-        return tile in ("floor", "door")
+        return tile in ("floor", "door")  # window는 벽과 동일하게 이동 불가
+
+    def get_nearby_window(self, px, py, radius=1.5):
+        """플레이어 근처 창문 반환 (가장 가까운 것)"""
+        best = None
+        best_dist = radius + 1
+        for w in self.windows:
+            d = abs(w["x"] - px) + abs(w["y"] - py)
+            if d <= radius and d < best_dist:
+                best_dist = d
+                best = w
+        return best
 
     def get_furniture_at(self, x, y, radius=1.0):
         """좌표 근처의 가구 반환"""
@@ -423,6 +458,7 @@ class BuildingInterior:
             "furniture": [f.to_dict() for f in self.furniture],
             "items_on_ground": list(self.items_on_ground),
             "zombies": getattr(self, 'zombies', []),
+            "windows": getattr(self, 'windows', []),
         }
 
     @classmethod
@@ -439,4 +475,6 @@ class BuildingInterior:
         interior.items_on_ground = [tuple(item) for item in data.get("items_on_ground", [])]
         # 좀비 상태 복원
         interior.zombies = data.get("zombies", [])
+        # 창문 복원
+        interior.windows = data.get("windows", getattr(interior, 'windows', []))
         return interior
